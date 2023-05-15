@@ -95,6 +95,9 @@ typedef enum CUoutput_mode_enum
  *
  * \deprecated
  *
+ * Note that this function is deprecated and should not be used.
+ * Starting with CUDA 12.0, it always returns error code ::CUDA_ERROR_NOT_SUPPORTED.
+ * 
  * Using this API user can initialize the CUDA profiler by specifying
  * the configuration file, output file and output file format. This
  * API is generally used to profile different set of counters by
@@ -130,16 +133,12 @@ typedef enum CUoutput_mode_enum
  * \param outputMode - outputMode, can be ::CU_OUT_KEY_VALUE_PAIR or ::CU_OUT_CSV.
  *
  * \return
- * ::CUDA_SUCCESS,
- * ::CUDA_ERROR_INVALID_CONTEXT,
- * ::CUDA_ERROR_INVALID_VALUE,
- * ::CUDA_ERROR_PROFILER_DISABLED
+ * ::CUDA_ERROR_NOT_SUPPORTED
  * \notefnerr
  *
  * \sa
  * ::cuProfilerStart,
  * ::cuProfilerStop,
- * ::cudaProfilerInitialize
  */
 __CUDA_DEPRECATED CUresult CUDAAPI cuProfilerInitialize(const char *configFile, const char *outputFile, CUoutput_mode outputMode);
  

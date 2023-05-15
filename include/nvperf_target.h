@@ -2,7 +2,7 @@
 #define NVPERF_TARGET_H
 
 /*
- * Copyright 2014-2021  NVIDIA Corporation.  All rights reserved.
+ * Copyright 2014-2022  NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO USER:
  *
@@ -119,6 +119,18 @@ extern "C" {
         NVPW_CMP_SUPPORT_LEVEL_SUPPORTED_NON_CMP_CONFIGURATON
     } NVPW_CmpSupportLevel;
 #endif //NVPW_CMP_SUPPORT_LEVEL_DEFINED
+
+#ifndef NVPW_WSL_SUPPORT_LEVEL_DEFINED
+#define NVPW_WSL_SUPPORT_LEVEL_DEFINED
+    /// WSL support level
+    typedef enum NVPW_WslSupportLevel
+    {
+        NVPW_WSL_SUPPORT_LEVEL_UNKNOWN = 0,
+        NVPW_WSL_SUPPORT_LEVEL_UNSUPPORTED_INSUFFICIENT_DRIVER_VERSION,
+        NVPW_WSL_SUPPORT_LEVEL_SUPPORTED,
+        NVPW_WSL_SUPPORT_LEVEL_SUPPORTED_NON_WSL_CONFIGURATION
+    } NVPW_WslSupportLevel;
+#endif //NVPW_WSL_SUPPORT_LEVEL_DEFINED
 
     typedef struct NVPW_InitializeTarget_Params
     {
@@ -293,11 +305,11 @@ extern "C" {
 
 #define NVPW_API_SET_D3D11_PROFILER            0xca55c6738445db2bULL
 
-#define NVPW_API_SET_D3D12_PERIODICSAMPLER     0xe81a80d42a3f007fULL
-
 #define NVPW_API_SET_D3D12_PROFILER            0xc0c2d46dd7c7ad78ULL
 
 #define NVPW_API_SET_EGL_PROFILER              0x3c3747dae1f9565cULL
+
+#define NVPW_API_SET_GPU_PERIODICSAMPLER       0x9f4c2571fc0b2e8aULL
 
 #define NVPW_API_SET_METRICSCONTEXT            0x7c8579f6f2144beaULL
 
@@ -329,9 +341,9 @@ extern "C" {
 
 #define NVPW_API_SET_OPENGL_PROFILER           0xe4cd9ea40f2ee777ULL
 
-#define NVPW_API_SET_VULKAN_PERIODICSAMPLER    0xdc999b5368e416a0ULL
-
 #define NVPW_API_SET_VULKAN_PROFILER           0x8c56b6a03d779689ULL
+
+#define NVPW_SDK_VERSION               0x1e128b6f001423fcULL
 
     typedef struct NVPW_QueryVersionNumber_Params
     {
@@ -444,97 +456,15 @@ extern "C" {
 
     NVPA_Status NVPW_Profiler_CounterData_GetRangeDescriptions(NVPW_Profiler_CounterData_GetRangeDescriptions_Params* pParams);
 
-#ifndef NVPW_TRIGGER_SOURCE_DEFINED
-#define NVPW_TRIGGER_SOURCE_DEFINED
-    typedef enum NVPW_PeriodicSampler_TriggerSource
+#ifndef NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE_DEFINED
+#define NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE_DEFINED
+    typedef enum NVPW_PeriodicSampler_CounterData_AppendMode
     {
-        /// The trigger is based off of system calls.
-        NVPW_TRIGGER_SOURCE_CPU_SYSCALL = 1,
-        /// The trigger is based off of the SYSCLK interval, note SYS frequency by default is variable.
-        NVPW_TRIGGER_SOURCE_GPU_SYSCLK_INTERVAL = 2,
-        /// The trigger is based off of a fixed frequency source.
-        NVPW_TRIGGER_SOURCE_GPU_TIME_INTERVAL = 4,
-        /// GR pushbuffer trigger that can come from this or other processes.
-        NVPW_TRIGGER_SOURCE_GPU_ENGINE_TRIGGER = 8,
-        NVPW_TRIGGER_SOURCE__COUNT
-    } NVPW_PeriodicSampler_TriggerSource;
-#endif //NVPW_TRIGGER_SOURCE_DEFINED
-
-    typedef struct NVPW_PeriodicSampler_SampleOptions
-    {
-        /// [in]
-        size_t structSize;
-        /// [in] assign to NULL
-        void* pPriv;
-        /// maximum number of StartSampling/StopSampling pairs in a single frame
-        size_t maxSamplingRangesPerFrame;
-        /// maximum number of user delimiters that can be inserted via InsertDelimiter in a single frame
-        size_t maxUserDelimitersPerFrame;
-        /// maximum number of samples in a single frame
-        size_t maxSamplesPerFrame;
-        union
-        {
-            /// In SYSCLK cycles. Only applies to 'NVPW_TRIGGER_SOURCE_GPU_SYSCLK_INTERVAL'.
-            size_t sampleIntervalCycles;
-            /// Only applies to 'NVPW_TRIGGER_SOURCE_GPU_TIME_INTERVAL'.
-            size_t sampleIntervalNanoseconds;
-        };
-        /// average length of the delimiters passed to StartSampling/InsertDelimiter, excluding the trailing NULL
-        /// character. Must be less than or equal to maxDelimiterNameLength.
-        size_t avgDelimiterNameLength;
-        /// maximum length of the delimiters passed to StartSampling/InsertDelimiter, excluding the trailing NULL
-        /// character. Must be less than 256.
-        size_t maxDelimiterNameLength;
-        /// set to the maximum possible number of unread passes, must be at least 2
-        size_t numTraceBuffers;
-        uint32_t triggerSource;
-    } NVPW_PeriodicSampler_SampleOptions;
-#define NVPW_PeriodicSampler_SampleOptions_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_SampleOptions, triggerSource)
-
-    typedef struct NVPW_PeriodicSampler_CounterDataImageOptions
-    {
-        /// [in]
-        size_t structSize;
-        /// The CounterDataPrefix generated from e.g. NVPW_CounterDataBuilder_GetCounterDataPrefix().  Must be align(8).
-        const uint8_t* pCounterDataPrefix;
-        size_t counterDataPrefixSize;
-        /// maximum length of the delimiters passed to StartSampling/InsertDelimiter, excluding the trailing NULL
-        /// character. Must be less than 256.
-        size_t maxDelimiterNameLength;
-        /// maximum number of samples in a single frame
-        size_t maxSamplesPerFrame;
-    } NVPW_PeriodicSampler_CounterDataImageOptions;
-#define NVPW_PeriodicSampler_CounterDataImageOptions_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterDataImageOptions, maxSamplesPerFrame)
-
-    typedef struct NVPW_PeriodicSampler_CounterData_DelimiterInfo
-    {
-        const char* pDelimiterName;
-        /// defines a half-open interval [rangeIndexStart, rangeIndexEnd)
-        uint32_t rangeIndexStart;
-        uint32_t rangeIndexEnd;
-    } NVPW_PeriodicSampler_CounterData_DelimiterInfo;
-#define NVPW_PeriodicSampler_CounterData_DelimiterInfo_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterData_DelimiterInfo, rangeIndexEnd)
-
-    typedef struct NVPW_PeriodicSampler_CounterData_GetDelimiters_Params
-    {
-        /// [in]
-        size_t structSize;
-        /// [in] assign to NULL
-        void* pPriv;
-        /// [in]
-        const uint8_t* pCounterDataImage;
-        /// [in]
-        size_t delimiterInfoStructSize;
-        /// [inout] if pDelimiters is NULL, then the number of delimiters available is returned in numDelimiters,
-        /// otherwise numDelimiters should be set by the user to the number of elements in the pDelimiters array, and on
-        /// return the variable is overwritten with the number of elements actually written to pDelimiters
-        size_t numDelimiters;
-        /// [inout] either NULL or a pointer to an array of NVPW_Sampler_CounterData_DelimiterInfo
-        NVPW_PeriodicSampler_CounterData_DelimiterInfo* pDelimiters;
-    } NVPW_PeriodicSampler_CounterData_GetDelimiters_Params;
-#define NVPW_PeriodicSampler_CounterData_GetDelimiters_Params_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterData_GetDelimiters_Params, pDelimiters)
-
-    NVPA_Status NVPW_PeriodicSampler_CounterData_GetDelimiters(NVPW_PeriodicSampler_CounterData_GetDelimiters_Params* pParams);
+        NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE_LINEAR = 0,
+        NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE_CIRCULAR = 1,
+        NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE__COUNT
+    } NVPW_PeriodicSampler_CounterData_AppendMode;
+#endif //NVPW_PERIODIC_SAMPLER_COUNTER_DATA_APPEND_MODE_DEFINED
 
     typedef struct NVPW_PeriodicSampler_CounterData_GetSampleTime_Params
     {
@@ -571,6 +501,63 @@ extern "C" {
 #define NVPW_PeriodicSampler_CounterData_TrimInPlace_Params_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterData_TrimInPlace_Params, counterDataImageTrimmedSize)
 
     NVPA_Status NVPW_PeriodicSampler_CounterData_TrimInPlace(NVPW_PeriodicSampler_CounterData_TrimInPlace_Params* pParams);
+
+    typedef struct NVPW_PeriodicSampler_CounterData_GetInfo_Params
+    {
+        /// [in]
+        size_t structSize;
+        /// [in] assign to NULL
+        void* pPriv;
+        /// [in]
+        const uint8_t* pCounterDataImage;
+        /// [in]
+        size_t counterDataImageSize;
+        /// [out] total number of ranges in the counter data
+        size_t numTotalRanges;
+        /// [out] if in "linear" mode, this API returns the number of "populated" ranges; if it's in "circular" mode,
+        /// then it returns the last "populated" range index + 1, when there is no such range, it returns 0.
+        size_t numPopulatedRanges;
+        /// [out] if in "linear" mode, this API returns the number of "completed" ranges; if it's in "circular" mode,
+        /// then it returns the last "completed" range index + 1, when there is no such range, it returns 0.
+        size_t numCompletedRanges;
+    } NVPW_PeriodicSampler_CounterData_GetInfo_Params;
+#define NVPW_PeriodicSampler_CounterData_GetInfo_Params_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterData_GetInfo_Params, numCompletedRanges)
+
+    /// In periodic sampler, a range in counter data stores exactly one sample's data. For better performance, periodic
+    /// sampler may operate in an out-of-order fashion when populating sample data, i.e. it may not fully populate all
+    /// counters of a sample/range before starting to populate the next sample/range. As a result, we have two concepts
+    /// here, "populated" & "completed": a range is considered "populated" even if only partial counters have been
+    /// written; on the other hand, a range is only considered "completed" if all the collecting counters have been
+    /// written.
+    NVPA_Status NVPW_PeriodicSampler_CounterData_GetInfo(NVPW_PeriodicSampler_CounterData_GetInfo_Params* pParams);
+
+    typedef struct NVPW_PeriodicSampler_CounterData_GetTriggerCount_Params
+    {
+        /// [in]
+        size_t structSize;
+        /// [in] assign to NULL
+        void* pPriv;
+        /// [in]
+        const uint8_t* pCounterDataImage;
+        /// [in]
+        size_t counterDataImageSize;
+        /// [in]
+        size_t rangeIndex;
+        /// [out]
+        uint32_t triggerCount;
+    } NVPW_PeriodicSampler_CounterData_GetTriggerCount_Params;
+#define NVPW_PeriodicSampler_CounterData_GetTriggerCount_Params_STRUCT_SIZE NVPA_STRUCT_SIZE(NVPW_PeriodicSampler_CounterData_GetTriggerCount_Params, triggerCount)
+
+    NVPA_Status NVPW_PeriodicSampler_CounterData_GetTriggerCount(NVPW_PeriodicSampler_CounterData_GetTriggerCount_Params* pParams);
+
+
+    typedef struct NVPW_TimestampReport
+    {
+        uint32_t payload;
+        uint8_t reserved0004[4];
+        uint64_t timestamp;
+    } NVPW_TimestampReport;
+
 
 
 

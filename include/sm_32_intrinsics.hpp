@@ -58,7 +58,7 @@
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
 
 /*******************************************************************************
 *                                                                              *
@@ -578,7 +578,7 @@ __SM_32_INTRINSICS_DECL__ unsigned int __funnelshift_rc(unsigned int lo, unsigne
 }
 
 
-#endif /* !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
+#endif /* _NVHPC_CUDA || !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
 
 #endif /* __cplusplus && __CUDACC__ */
 

@@ -53,6 +53,7 @@
 #include "helpers.h"
 #include "coalesced_reduce.h"
 #include "functional.h"
+#include "cooperative_groups.h"
 
 _CG_BEGIN_NAMESPACE
 
@@ -199,6 +200,14 @@ namespace details {
             return accelerated_op<TyFnInput>::template redux<TyOp>(_coalesced_group_data_access::get_mask(group), _CG_STL_NAMESPACE::forward<TyVal>(val));
         }
 
+        template<
+            template <class> class TyOp,
+            redux_is_usable<TyFnInput, TyOp> = nullptr>
+        _CG_STATIC_QUALIFIER auto reduce(const TyGroup& group, TyVal&& val, TyOp<TyFnInput>& op) -> decltype(op(val, val)) {
+            // Retrieve the mask for the group and dispatch to redux
+            return accelerated_op<TyFnInput>::template redux<TyOp>(_coalesced_group_data_access::get_mask(group), _CG_STL_NAMESPACE::forward<TyVal>(val));
+        }
+
         // Fallback shuffle sync reduction
         template <
             template <class> class TyOp,
@@ -231,6 +240,15 @@ namespace details {
         return dispatch::reduce(group, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyOp<TyFnInput>>(op));
     }
 
+    template <typename TyVal, typename TyFnInput, template <class> class TyOp, typename TyGroup>
+    _CG_QUALIFIER auto reduce(const TyGroup& group, TyVal&& val, TyOp<TyFnInput>& op) -> decltype(op(val, val)) {
+        static_assert(details::is_op_type_same<TyFnInput, TyVal>::value, "Operator and argument types differ");
+
+        using dispatch = details::_redux_dispatch<TyVal, TyFnInput, TyGroup>;
+        return dispatch::reduce(group, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyOp<TyFnInput>>(op));
+    }
+
+
     template <typename TyVal, typename TyOp, typename TyGroup>
     _CG_QUALIFIER auto reduce(const TyGroup& group, TyVal&& val, TyOp&& op) -> decltype(op(val, val)) {
         return details::coalesced_reduce(group, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyOp>(op));
@@ -247,7 +265,7 @@ namespace details {
         }
     };
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
+#if defined(_CG_CPP11_FEATURES)
     template <>
     struct tile_reduce_dispatch<details::multi_tile_group_id> {
         template <unsigned int Size, typename ParentT, typename TyVal, typename TyFn>
@@ -258,7 +276,7 @@ namespace details {
 
             auto warp_lambda = [&] (const warpType& warp, TyRet* warp_scratch_location) {
                     *warp_scratch_location =
-                        details::reduce(warp, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op));
+                        details::reduce(warp, _CG_STL_NAMESPACE::forward<TyVal>(val), op);
             };
             auto inter_warp_lambda =
                 [&] (const details::internal_thread_block_tile<num_warps, warpType>& subwarp, TyRet* thread_scratch_location) {
@@ -268,17 +286,143 @@ namespace details {
             return details::multi_warp_collectives_helper<TyRet>(group, warp_lambda, inter_warp_lambda);
         }
     };
+
+    template <unsigned int GroupId>
+    struct tile_async_reduce_dispatch;
+
+    template <>
+    struct tile_async_reduce_dispatch<details::coalesced_group_id> {
+        template <unsigned int TySize, typename ParentT, typename TyDst, typename TyVal, typename TyFn, typename TyResHandler>
+        _CG_STATIC_QUALIFIER void reduce(const __single_warp_thread_block_tile<TySize, ParentT>& group, TyDst& dst, TyVal&& val, TyFn&& op, TyResHandler& res_handler) {
+            // Do regular, in group reduction
+            auto result = details::reduce(group, _CG_STL_NAMESPACE::forward<TyVal>(val), op);
+
+            // One thread stores/updates the destination
+            if (group.thread_rank() == 0) {
+                res_handler(result);
+            }
+        }
+        template <typename TyDst, typename TyVal, typename TyFn, typename TyResHandler>
+        _CG_STATIC_QUALIFIER void reduce(const coalesced_group& group, TyDst& dst, TyVal&& val, TyFn&& op, TyResHandler& res_handler) {
+            // Do in group reduction to the last thread
+            auto result = details::coalesced_reduce_to_one(group, _CG_STL_NAMESPACE::forward<TyVal>(val), op);
+
+            // One thread stores/updates the destination
+            if (group.thread_rank() == group.size() - 1) {
+                res_handler(result);
+            }
+        }
+    };
+
+    template <>
+    struct tile_async_reduce_dispatch<details::multi_tile_group_id> {
+        template <unsigned int TySize, typename ParentT, typename TyDst, typename TyInputVal, typename TyFn, typename TyResHandler>
+        _CG_STATIC_QUALIFIER void reduce(const thread_block_tile<TySize, ParentT>& group, TyDst& dst, TyInputVal&& val, TyFn&& op, TyResHandler& res_handler) {
+            using TyVal = remove_qual<TyInputVal>;
+            const unsigned int num_warps = TySize / 32;
+            details::barrier_t* sync_location = multi_warp_sync_location_getter(group);
+            auto warp_scratch_location = multi_warp_scratch_location_getter<TyVal>(group, group.thread_rank() / 32);
+
+            // Do in warp reduce
+            auto warp = details::tiled_partition_internal<32, thread_block_tile<TySize, ParentT>>();
+            *warp_scratch_location = details::reduce(warp, _CG_STL_NAMESPACE::forward<TyInputVal>(val), op);
+
+            // Tile of size num_warps from the last warp to arrive does final reduction step
+            if (details::sync_warps_last_releases(sync_location, details::cta::thread_rank(), num_warps)) {
+                auto subwarp = details::tiled_partition_internal<num_warps, decltype(warp)>();
+                if (subwarp.meta_group_rank() == 0) {
+                    auto thread_scratch_location = multi_warp_scratch_location_getter<TyVal>(group, subwarp.thread_rank());
+                    auto thread_val = *thread_scratch_location;
+                    // Release other warps, we read their contribution already.
+                    subwarp.sync();
+                    details::sync_warps_release(sync_location, subwarp.thread_rank() == 0, details::cta::thread_rank(), num_warps);
+                    TyVal result = details::reduce(subwarp, thread_val, op);
+                    // One thread stores the result or updates the atomic
+                    if (subwarp.thread_rank() == 0) {
+                        res_handler(result);
+                    }
+                }
+                warp.sync();
+            }
+        }
+    };
 #endif
+
+    template <typename TyGroup, typename TyInputVal, typename TyRetVal>
+    _CG_QUALIFIER void check_reduce_params() {
+        static_assert(details::is_op_type_same<TyInputVal, TyRetVal>::value, "Operator input and output types differ");
+        static_assert(details::reduce_group_supported<TyGroup>::value, "This group does not exclusively represent a tile");
+    };
+
+    template <typename TyGroup, typename TyDstVal, typename TyInputVal, typename TyRetVal>
+    _CG_QUALIFIER void check_async_reduce_params() {
+        check_reduce_params<TyGroup, TyInputVal, TyRetVal>();
+        static_assert(details::is_op_type_same<TyDstVal, TyInputVal>::value, "Destination and input types differ");
+    }
 } // details
 
 template <typename TyGroup, typename TyVal, typename TyFn>
 _CG_QUALIFIER auto reduce(const TyGroup& group, TyVal&& val, TyFn&& op) -> decltype(op(val, val)) {
-    static_assert(details::is_op_type_same<decltype(op(val, val)), TyVal>::value, "Operator input and output types differ");
-    static_assert(details::reduce_group_supported<TyGroup>::value, "This group does not exclusively represent a tile");
+    details::check_reduce_params<TyGroup, details::remove_qual<TyVal>, decltype(op(val, val))>();
 
     using dispatch = details::tile_reduce_dispatch<TyGroup::_group_id>;
     return dispatch::reduce(group, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op));
 }
+
+#if defined(_CG_CPP11_FEATURES)
+
+# if defined(_CG_HAS_STL_ATOMICS)
+template<typename TyGroup, typename TyVal, cuda::thread_scope Sco, typename TyInputVal, typename TyFn>
+void _CG_QUALIFIER reduce_update_async(const TyGroup& group, cuda::atomic<TyVal, Sco>& dst, TyInputVal&& val, TyFn&& op) {
+    details::check_async_reduce_params<TyGroup, TyVal, details::remove_qual<TyInputVal>, decltype(op(val, val))>();
+    auto update_lambda = [&] (TyVal& result) {
+        details::atomic_update(dst, result, op);
+    };
+    using dispatch = details::tile_async_reduce_dispatch<TyGroup::_group_id>;
+    dispatch::reduce(group, dst, _CG_STL_NAMESPACE::forward<TyInputVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op), update_lambda);
+}
+
+template<typename TyGroup, typename TyVal, cuda::thread_scope Sco, typename TyInputVal, typename TyFn>
+void _CG_QUALIFIER reduce_update_async(const TyGroup& group, const cuda::atomic_ref<TyVal, Sco>& dst, TyInputVal&& val, TyFn&& op) {
+    details::check_async_reduce_params<TyGroup, TyVal, details::remove_qual<TyInputVal>, decltype(op(val, val))>();
+    auto update_lambda = [&] (TyVal& result) {
+        details::atomic_update(dst, result, op);
+    };
+    using dispatch = details::tile_async_reduce_dispatch<TyGroup::_group_id>;
+    dispatch::reduce(group, dst, _CG_STL_NAMESPACE::forward<TyInputVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op), update_lambda);
+}
+
+template<typename TyGroup, typename TyVal, cuda::thread_scope Sco, typename TyInputVal, typename TyFn>
+void _CG_QUALIFIER reduce_store_async(const TyGroup& group, cuda::atomic<TyVal, Sco>& dst, TyInputVal&& val, TyFn&& op) {
+    details::check_async_reduce_params<TyGroup, TyVal, details::remove_qual<TyInputVal>, decltype(op(val, val))>();
+    auto store_lambda = [&] (TyVal& result) {
+        details::atomic_store(dst, result);
+    };
+    using dispatch = details::tile_async_reduce_dispatch<TyGroup::_group_id>;
+    dispatch::reduce(group, dst, _CG_STL_NAMESPACE::forward<TyInputVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op), store_lambda);
+}
+
+template<typename TyGroup, typename TyVal, cuda::thread_scope Sco, typename TyInputVal, typename TyFn>
+void _CG_QUALIFIER reduce_store_async(const TyGroup& group, const cuda::atomic_ref<TyVal, Sco>& dst, TyInputVal&& val, TyFn&& op) {
+    details::check_async_reduce_params<TyGroup, TyVal, details::remove_qual<TyInputVal>, decltype(op(val, val))>();
+    auto store_lambda = [&] (TyVal& result) {
+        details::atomic_store(dst, result);
+    };
+    using dispatch = details::tile_async_reduce_dispatch<TyGroup::_group_id>;
+    dispatch::reduce(group, dst, _CG_STL_NAMESPACE::forward<TyInputVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op), store_lambda);
+}
+# endif
+
+template<typename TyGroup, typename TyVal, typename TyInputVal, typename TyFn>
+void _CG_QUALIFIER reduce_store_async(const TyGroup& group, TyVal* dst, TyInputVal&& val, TyFn&& op) {
+    details::check_async_reduce_params<TyGroup, TyVal, details::remove_qual<TyInputVal>, decltype(op(val, val))>();
+    auto store_lambda = [&] (TyVal& result) {
+        *dst = result;
+    };
+    using dispatch = details::tile_async_reduce_dispatch<TyGroup::_group_id>;
+    dispatch::reduce(group, dst, _CG_STL_NAMESPACE::forward<TyInputVal>(val), _CG_STL_NAMESPACE::forward<TyFn>(op), store_lambda);
+}
+#endif
 
 _CG_END_NAMESPACE
 

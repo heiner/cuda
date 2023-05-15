@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -2246,6 +2246,65 @@ NppStatus nppiThreshold_GTVal_32f_AC4IR(Npp32f * pSrcDst, int nSrcDstStep,
                                         const Npp32f rThresholds[3], const Npp32f rValues[3]);
 
 /** @} image_threshold_greater_than_value_operations */
+
+
+/** 
+ * @defgroup image_fused_absdiff_threshold_greater_than_value_operations Fused AbsDiff Threshold Greater Than Value Operations
+ * Replace image pixels greater than threshold with a value.
+ *
+ * Supported data types include NPP_8U, NPP_16U, NPP_16S, NPP_32F. 
+ * Supported channel counts include NPP_CH_1, NPP_CH_3, NPP_CH_A4. 
+ * \param eSrcDstType image data type.
+ * \param eSrcDstChannels image channels. 
+ * \param pSrcDst \ref in_place_image_pointer for inplace functions.
+ * \param nSrcDstStep \ref in_place_image_line_step for inplace functions.
+ * \param pSrc1 \ref source_image_pointer for non-inplace functions.
+ * \param nSrc1Step \ref source_image_line_step for non-inplace functions.
+ * \param pSrc2 \ref source_image_pointer to second source image for non-inplace functions.
+ * \param nSrc2Step \ref source_image_line_step of second source image for non-inplace functions.
+ * \param pDst \ref destination_image_pointer for non-inplace functions.
+ * \param nDstStep \ref destination_image_line_step for non-inplace functions.
+ * \param oSizeROI \ref roi_specification.
+ * \param pThreshold The threshold value.
+ * \param pValue The threshold replacement value.
+ * \param nppStreamCtx \ref application_managed_stream_context. 
+ * \return \ref image_data_error_codes, \ref roi_error_codes.
+ *
+ * @{
+ *
+ */
+
+
+
+/** 
+ * Image fused absdiff and greater than threshold value.
+ * If for a comparison operations absdiff of sourcePixels is greater than pThreshold is true, the output pixel is set
+ * to pValue, otherwise it is set to absdiff of sourcePixels.
+ * 
+ */
+NppStatus 
+nppiFusedAbsDiff_Threshold_GTVal_Ctx(NppDataType eSrcDstType, NppiChannels eSrcDstChannels,
+                                     const void * pSrc1, int nSrc1Step,
+                                     const void * pSrc2, int nSrc2Step,
+                                     void * pDst, int nDstStep, NppiSize oSizeROI, 
+                                     const void * pThreshold, const void * pvalue,
+                                     NppStreamContext nppStreamCtx); 
+
+/** 
+ * In place fused absdiff image greater than threshold value.
+ * If for a comparison operations absdiff of sourcePixels is greater than pThreshold is true, the output pixel is set
+ * to pValue, otherwise it is set to absdiff of sourcePixels.
+ * 
+ */
+NppStatus 
+nppiFusedAbsDiff_Threshold_GTVal_I_Ctx(NppDataType eSrcDstType, NppiChannels eSrcDstChannels,
+                                       void * pSrcDst, int nSrcDstStep,  
+                                       const void * pSrc2, int nSrc2Step,
+                                       NppiSize oSizeROI,
+                                       const void * pThreshold, const void * pvalue,
+                                       NppStreamContext nppStreamCtx); 
+
+/** @} image_fused_absdiff_threshold_greater_than_value_operations */
 
 /** 
  * @defgroup image_threshold_less_than_value_operations Threshold Less Than Value Operations

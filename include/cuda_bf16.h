@@ -1,5 +1,5 @@
 /*
-* Copyright 1993-2021 NVIDIA Corporation.  All rights reserved.
+* Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
 *
 * NOTICE TO LICENSEE:
 *
@@ -52,6 +52,19 @@
 * This section describes nv_bfloat16 precision intrinsic functions that are
 * only supported in device code.
 * To use these functions, include the header file \p cuda_bf16.h in your program.
+* The following macros are available to help users selectively enable/disable
+* various definitions present in the header file:
+* - \p CUDA_NO_BFLOAT16 - If defined, this macro will prevent the definition of
+* additional type aliases in the global namespace, helping to avoid potential
+* conflicts with symbols defined in the user program.
+* - \p __CUDA_NO_BFLOAT16_CONVERSIONS__ - If defined, this macro will prevent
+* the use of the C++ type conversions (converting constructors and conversion
+* operators) that are common for built-in floating-point types, but may be
+* undesirable for \p __nv_bfloat16 which is essentially a user-defined type.
+* - \p __CUDA_NO_BFLOAT16_OPERATORS__ and \p __CUDA_NO_BFLOAT162_OPERATORS__ -
+* If defined, these macros will prevent the inadvertent use of usual arithmetic
+* and comparison operators. This enforces the storage-only type semantics and
+* prevents C++ style computations on \p __nv_bfloat16 and \p __nv_bfloat162 types.
 */
 
 /**
@@ -145,7 +158,7 @@ struct __nv_bfloat162;
 * \details Converts double number \p a to nv_bfloat16 precision in round-to-nearest-even mode.
 * \param[in] a - double. Is only being read.
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16.
+* - \p a converted to nv_bfloat16.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -160,7 +173,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __double2bfloat16(const double a);
 * \details Converts float number \p a to nv_bfloat16 precision in round-to-nearest-even mode. 
 * \param[in] a - float. Is only being read. 
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16. 
+* - \p a converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -175,7 +188,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16(const float a);
 * \details Converts float number \p a to nv_bfloat16 precision in round-to-nearest-even mode.
 * \param[in] a - float. Is only being read. 
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16. 
+* - \p a converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -190,7 +203,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rn(const float a);
 * \details Converts float number \p a to nv_bfloat16 precision in round-towards-zero mode.
 * \param[in] a - float. Is only being read. 
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16. 
+* - \p a converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -206,7 +219,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rz(const float a);
 * \param[in] a - float. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16. 
+* - \p a converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -222,7 +235,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rd(const float a);
 * \param[in] a - float. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval a converted to nv_bfloat16. 
+* - \p a converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -237,7 +250,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_ru(const float a);
 * \param[in] a - float. Is only being read. 
 * 
 * \returns float
-* \retval a converted to float. 
+* - \p a converted to float. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -254,7 +267,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float __bfloat162float(const __nv_bfloat16 a);
 * \param[in] a - float. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 value with both halves equal to the converted nv_bfloat16
+* - The \p nv_bfloat162 value with both halves equal to the converted nv_bfloat16
 * precision number.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -275,7 +288,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat162 __float2bfloat162_rn(const float a)
 * \param[in] b - float. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 value with corresponding halves equal to the
+* - The \p nv_bfloat162 value with corresponding halves equal to the
 * converted input floats.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -292,7 +305,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat162 __floats2bfloat162_rn(const float a
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns float
-* \retval The low 16 bits of \p a converted to float.
+* - The low 16 bits of \p a converted to float.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -308,7 +321,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float __low2float(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns float
-* \retval The high 16 bits of \p a converted to float.
+* - The high 16 bits of \p a converted to float.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -316,7 +329,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float __low2float(const __nv_bfloat162 a);
 */
 __CUDA_HOSTDEVICE_BF16_DECL__ float __high2float(const __nv_bfloat162 a);
 
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__))
+#if defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800) || defined(_NVHPC_CUDA))
 /**
 * \ingroup CUDA_MATH__BFLOAT16_MISC
 * \brief Converts both components of float2 number to nv_bfloat16 precision in
@@ -329,7 +342,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float __high2float(const __nv_bfloat162 a);
 * \param[in] a - float2. Is only being read. 
 *  
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 which has corresponding halves equal to the
+* - The \p nv_bfloat162 which has corresponding halves equal to the
 * converted float2 components.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -346,7 +359,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat162 __float22bfloat162_rn(const float2 
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns float2
-* \retval a converted to float2.
+* - \p a converted to float2.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -362,7 +375,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float2 __bfloat1622float2(const __nv_bfloat162 a);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns int
-* \retval h converted to a signed integer. 
+* - \p h converted to a signed integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -378,7 +391,7 @@ __CUDA_BF16_DECL__ int __bfloat162int_rn(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns int
-* \retval h converted to a signed integer. 
+* - \p h converted to a signed integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -394,7 +407,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ int __bfloat162int_rz(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns int
-* \retval h converted to a signed integer. 
+* - \p h converted to a signed integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -410,7 +423,7 @@ __CUDA_BF16_DECL__ int __bfloat162int_rd(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns int
-* \retval h converted to a signed integer. 
+* - \p h converted to a signed integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -427,7 +440,7 @@ __CUDA_BF16_DECL__ int __bfloat162int_ru(const __nv_bfloat16 h);
 * \param[in] i - int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -443,7 +456,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rn(const int i);
 * \param[in] i - int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -459,7 +472,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rz(const int i);
 * \param[in] i - int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -475,7 +488,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rd(const int i);
 * \param[in] i - int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -493,7 +506,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_ru(const int i);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns short int
-* \retval h converted to a signed short integer. 
+* - \p h converted to a signed short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -509,7 +522,7 @@ __CUDA_BF16_DECL__ short int __bfloat162short_rn(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns short int
-* \retval h converted to a signed short integer. 
+* - \p h converted to a signed short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -525,7 +538,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ short int __bfloat162short_rz(const __nv_bfloat16 
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns short int
-* \retval h converted to a signed short integer. 
+* - \p h converted to a signed short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -541,7 +554,7 @@ __CUDA_BF16_DECL__ short int __bfloat162short_rd(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns short int
-* \retval h converted to a signed short integer. 
+* - \p h converted to a signed short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -559,7 +572,7 @@ __CUDA_BF16_DECL__ short int __bfloat162short_ru(const __nv_bfloat16 h);
 * \param[in] i - short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -575,7 +588,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rn(const short int 
 * \param[in] i - short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -591,7 +604,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rz(const short int i);
 * \param[in] i - short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -607,7 +620,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rd(const short int i);
 * \param[in] i - short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -624,7 +637,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_ru(const short int i);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned int
-* \retval h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -640,7 +653,7 @@ __CUDA_BF16_DECL__ unsigned int __bfloat162uint_rn(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned int
-* \retval h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -656,7 +669,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __bfloat162uint_rz(const __nv_bfloat1
 * \param[in] h - nv_bfloat16. Is only being read. 
 *
 * \returns unsigned int
-* \retval h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -672,7 +685,7 @@ __CUDA_BF16_DECL__ unsigned int __bfloat162uint_rd(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 *
 * \returns unsigned int
-* \retval h converted to an unsigned integer. 
+* - \p h converted to an unsigned integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -689,7 +702,7 @@ __CUDA_BF16_DECL__ unsigned int __bfloat162uint_ru(const __nv_bfloat16 h);
 * \param[in] i - unsigned int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -705,7 +718,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rn(const unsigned in
 * \param[in] i - unsigned int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16.  
+* - \p i converted to nv_bfloat16.  
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -721,7 +734,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rz(const unsigned int i);
 * \param[in] i - unsigned int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -737,7 +750,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rd(const unsigned int i);
 * \param[in] i - unsigned int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -755,7 +768,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_ru(const unsigned int i);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned short int
-* \retval h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -772,7 +785,7 @@ __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_rn(const __nv_bfloat16 h
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned short int
-* \retval h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -788,7 +801,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned short int __bfloat162ushort_rz(const __nv
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned short int
-* \retval h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer. 
 */
 __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_rd(const __nv_bfloat16 h);
 /**
@@ -800,7 +813,7 @@ __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_rd(const __nv_bfloat16 h
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned short int
-* \retval h converted to an unsigned short integer. 
+* - \p h converted to an unsigned short integer. 
 */
 __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_ru(const __nv_bfloat16 h);
 
@@ -814,7 +827,7 @@ __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_ru(const __nv_bfloat16 h
 * \param[in] i - unsigned short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -831,7 +844,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rn(const unsigned 
 * \param[in] i - unsigned short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -847,7 +860,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rz(const unsigned short int i
 * \param[in] i - unsigned short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -863,7 +876,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rd(const unsigned short int i
 * \param[in] i - unsigned short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -881,7 +894,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_ru(const unsigned short int i
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned long long int
-* \retval h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -898,7 +911,7 @@ __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_rn(const __nv_bfloat16 
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned long long int
-* \retval h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -914,7 +927,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned long long int __bfloat162ull_rz(const __n
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned long long int
-* \retval h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -930,7 +943,7 @@ __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_rd(const __nv_bfloat16 
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned long long int
-* \retval h converted to an unsigned 64-bit integer. 
+* - \p h converted to an unsigned 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -948,7 +961,7 @@ __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_ru(const __nv_bfloat16 
 * \param[in] i - unsigned long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -965,7 +978,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rn(const unsigned lon
 * \param[in] i - unsigned long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -981,7 +994,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rz(const unsigned long long int 
 * \param[in] i - unsigned long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16.  
+* - \p i converted to nv_bfloat16.  
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -997,7 +1010,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rd(const unsigned long long int 
 * \param[in] i - unsigned long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1015,7 +1028,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_ru(const unsigned long long int 
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns long long int
-* \retval h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1031,7 +1044,7 @@ __CUDA_BF16_DECL__ long long int __bfloat162ll_rn(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns long long int
-* \retval h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1047,7 +1060,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ long long int __bfloat162ll_rz(const __nv_bfloat16
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns long long int
-* \retval h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1063,7 +1076,7 @@ __CUDA_BF16_DECL__ long long int __bfloat162ll_rd(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns long long int
-* \retval h converted to a signed 64-bit integer. 
+* - \p h converted to a signed 64-bit integer. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1081,7 +1094,7 @@ __CUDA_BF16_DECL__ long long int __bfloat162ll_ru(const __nv_bfloat16 h);
 * \param[in] i - long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1097,7 +1110,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rn(const long long int
 * \param[in] i - long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 */
 __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rz(const long long int i);
 /**
@@ -1109,7 +1122,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rz(const long long int i);
 * \param[in] i - long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1125,7 +1138,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rd(const long long int i);
 * \param[in] i - long long int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval i converted to nv_bfloat16. 
+* - \p i converted to nv_bfloat16. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1142,7 +1155,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_ru(const long long int i);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The truncated integer value. 
+* - The truncated integer value. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1157,7 +1170,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 htrunc(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The smallest integer value not less than \p h. 
+* - The smallest integer value not less than \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1172,7 +1185,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hceil(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The largest integer value which is less than or equal to \p h. 
+* - The largest integer value which is less than or equal to \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1189,7 +1202,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hfloor(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The nearest integer to \p h. 
+* - The nearest integer to \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1206,7 +1219,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hrint(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The truncated \p h. 
+* - The truncated \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1222,7 +1235,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2trunc(const __nv_bfloat162 h);
 * \param[in] h - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector of smallest integers not less than \p h. 
+* - The vector of smallest integers not less than \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1238,7 +1251,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2ceil(const __nv_bfloat162 h);
 * \param[in] h - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector of largest integers which is less than or equal to \p h. 
+* - The vector of largest integers which is less than or equal to \p h. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1256,7 +1269,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2floor(const __nv_bfloat162 h);
 * \param[in] h - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector of rounded integer values. 
+* - The vector of rounded integer values. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1273,7 +1286,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2rint(const __nv_bfloat162 h);
 * \param[in] a - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector which has both its halves equal to the input \p a. 
+* - The vector which has both its halves equal to the input \p a. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1289,7 +1302,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __bfloat162bfloat162(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval a with its halves being swapped. 
+* - \p a with its halves being swapped. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1309,7 +1322,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __lowhigh2highlow(const __nv_bfloat162 a);
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The low 16 bits of \p a and of \p b. 
+* - The low 16 bits of \p a and of \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1329,7 +1342,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __lows2bfloat162(const __nv_bfloat162 a, const
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The high 16 bits of \p a and of \p b. 
+* - The high 16 bits of \p a and of \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1344,7 +1357,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __highs2bfloat162(const __nv_bfloat162 a, cons
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The high 16 bits of the input. 
+* - The high 16 bits of the input. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1359,7 +1372,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __high2bfloat16(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval Returns \p nv_bfloat16 which contains low 16 bits of the input \p a. 
+* - Returns \p nv_bfloat16 which contains low 16 bits of the input \p a. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1374,9 +1387,9 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __low2bfloat16(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 * 
 * \returns int 
-* \retval -1 iff \p a is equal to negative infinity, 
-* \retval 1 iff \p a is equal to positive infinity, 
-* \retval 0 otherwise. 
+* - -1 iff \p a is equal to negative infinity, 
+* - 1 iff \p a is equal to positive infinity, 
+* - 0 otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1394,7 +1407,7 @@ __CUDA_BF16_DECL__ int __hisinf(const __nv_bfloat16 a);
 * \param[in] b - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The nv_bfloat162 with one nv_bfloat16 equal to \p a and the other to \p b. 
+* - The nv_bfloat162 with one nv_bfloat16 equal to \p a and the other to \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1410,7 +1423,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __halves2bfloat162(const __nv_bfloat16 a, cons
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The nv_bfloat162 with both halves equal to the low 16 bits of the input. 
+* - The nv_bfloat162 with both halves equal to the low 16 bits of the input. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1426,7 +1439,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __low2bfloat162(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The nv_bfloat162 with both halves equal to the high 16 bits of the input. 
+* - The nv_bfloat162 with both halves equal to the high 16 bits of the input. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1443,7 +1456,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __high2bfloat162(const __nv_bfloat162 a);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns short int
-* \retval The reinterpreted value. 
+* - The reinterpreted value. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1459,7 +1472,7 @@ __CUDA_BF16_DECL__ short int __bfloat16_as_short(const __nv_bfloat16 h);
 * \param[in] h - nv_bfloat16. Is only being read. 
 * 
 * \returns unsigned short int
-* \retval The reinterpreted value.
+* - The reinterpreted value.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1475,7 +1488,7 @@ __CUDA_BF16_DECL__ unsigned short int __bfloat16_as_ushort(const __nv_bfloat16 h
 * \param[in] i - short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The reinterpreted value.
+* - The reinterpreted value.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1491,7 +1504,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __short_as_bfloat16(const short int i);
 * \param[in] i - unsigned short int. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The reinterpreted value.
+* - The reinterpreted value.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1860,7 +1873,7 @@ __CUDA_BF16_DECL__ void __stwt(__nv_bfloat16 *const ptr, const __nv_bfloat16 val
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector result of if-equal comparison of vectors \p a and \p b.
+* - The vector result of if-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1878,7 +1891,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __heq2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector result of not-equal comparison of vectors \p a and \p b.
+* - The vector result of not-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1896,7 +1909,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hne2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 result of less-equal comparison of vectors \p a and \p b.
+* - The \p nv_bfloat162 result of less-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1914,7 +1927,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hle2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The vector result of greater-equal comparison of vectors \p a and \p b.
+* - The vector result of greater-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1932,7 +1945,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hge2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The nv_bfloat162 vector result of less-than comparison of vectors \p a and \p b.
+* - The nv_bfloat162 vector result of less-than comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1950,7 +1963,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hlt2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector result of greater-than comparison of vectors \p a and \p b.
+* - The vector result of greater-than comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1968,7 +1981,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hgt2(const __nv_bfloat162 a, const __nv_bflo
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The vector result of unordered if-equal comparison of vectors \p a and \p b.
+* - The vector result of unordered if-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -1986,7 +1999,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hequ2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The vector result of unordered not-equal comparison of vectors \p a and \p b.
+* - The vector result of unordered not-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2004,7 +2017,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hneu2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The vector result of unordered less-equal comparison of vectors \p a and \p b.
+* - The vector result of unordered less-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2022,7 +2035,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hleu2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 vector result of unordered greater-equal comparison of vectors \p a and \p b.
+* - The \p nv_bfloat162 vector result of unordered greater-equal comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2040,7 +2053,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hgeu2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The vector result of unordered less-than comparison of vectors \p a and \p b.
+* - The vector result of unordered less-than comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2058,7 +2071,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hltu2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The \p nv_bfloat162 vector result of unordered greater-than comparison of vectors \p a and \p b.
+* - The \p nv_bfloat162 vector result of unordered greater-than comparison of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2067,13 +2080,229 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hltu2(const __nv_bfloat162 a, const __nv_bfl
 __CUDA_BF16_DECL__ __nv_bfloat162 __hgtu2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 /**
 * \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs nv_bfloat162 vector if-equal comparison.
+* 
+* \details Performs \p nv_bfloat162 vector if-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+* 
+* \returns unsigned int
+* - The vector mask result of if-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __heq2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector not-equal comparison.
+* 
+* \details Performs \p nv_bfloat162 vector not-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+* 
+* \returns unsigned int
+* - The vector mask result of not-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hne2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector less-equal comparison.
+*
+* \details Performs \p nv_bfloat162 vector less-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of less-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hle2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector greater-equal comparison.
+*
+* \details Performs \p nv_bfloat162 vector greater-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of greater-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hge2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector less-than comparison.
+*
+* \details Performs \p nv_bfloat162 vector less-than comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of less-than comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hlt2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector greater-than comparison.
+* 
+* \details Performs \p nv_bfloat162 vector greater-than comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate false results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+* 
+* \returns unsigned int
+* - The vector mask result of greater-than comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hgt2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered if-equal comparison.
+* 
+* \details Performs \p nv_bfloat162 vector if-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+* 
+* \returns unsigned int
+* - The vector mask result of unordered if-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hequ2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered not-equal comparison.
+*
+* \details Performs \p nv_bfloat162 vector not-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of unordered not-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hneu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered less-equal comparison.
+*
+* Performs \p nv_bfloat162 vector less-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of unordered less-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hleu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered greater-equal comparison.
+*
+* \details Performs \p nv_bfloat162 vector greater-equal comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of unordered greater-equal comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hgeu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered less-than comparison.
+*
+* \details Performs \p nv_bfloat162 vector less-than comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of unordered less-than comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hltu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
+* \brief Performs \p nv_bfloat162 vector unordered greater-than comparison.
+*
+* \details Performs \p nv_bfloat162 vector greater-than comparison of inputs \p a and \p b.
+* The corresponding \p unsigned bits are set to 0xFFFF for true, or 0x0 for false.
+* NaN inputs generate true results.
+* \param[in] a - nv_bfloat162. Is only being read. 
+* \param[in] b - nv_bfloat162. Is only being read. 
+*
+* \returns unsigned int
+* - The vector mask result of unordered greater-than comparison of vectors \p a and \p b.
+* \internal
+* \exception-guarantee no-throw guarantee
+* \behavior reentrant, thread safe
+* \endinternal
+*/
+__CUDA_BF16_DECL__ unsigned __hgtu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b);
+/**
+* \ingroup CUDA_MATH__BFLOAT162_COMPARISON
 * \brief Determine whether \p nv_bfloat162 argument is a NaN.
 *
 * \details Determine whether each nv_bfloat16 of input \p nv_bfloat162 number \p a is a NaN.
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The nv_bfloat162 with the corresponding \p nv_bfloat16 results set to
+* - The nv_bfloat162 with the corresponding \p nv_bfloat16 results set to
 * 1.0 for NaN, 0.0 otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -2094,7 +2323,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hisnan2(const __nv_bfloat162 a);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The sum of vectors \p a and \p b. 
+* - The sum of vectors \p a and \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2114,7 +2343,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The subtraction of vector \p b from \p a. 
+* - The subtraction of vector \p b from \p a. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2134,7 +2363,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise multiplying the vectors \p a and \p b. 
+* - The result of elementwise multiplying the vectors \p a and \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2154,7 +2383,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The sum of vectors \p a and \p b.
+* - The sum of vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2174,7 +2403,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2_rn(const __nv_bfloat162 a, const __nv_
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The subtraction of vector \p b from \p a.
+* - The subtraction of vector \p b from \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2195,7 +2424,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2_rn(const __nv_bfloat162 a, const __nv_
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise multiplying the vectors \p a and \p b.
+* - The result of elementwise multiplying the vectors \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2215,7 +2444,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2_rn(const __nv_bfloat162 a, const __nv_
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise division of \p a with \p b. 
+* - The elementwise division of \p a with \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2232,7 +2461,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __h2div(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns bfloat2
-* \retval Returns \p a with the absolute value of both halves. 
+* - Returns \p a with the absolute value of both halves. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2251,7 +2480,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __habs2(const __nv_bfloat162 a);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The sum of \p a and \p b, with respect to saturation. 
+* - The sum of \p a and \p b, with respect to saturation. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2270,7 +2499,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2_sat(const __nv_bfloat162 a, const __nv
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The subtraction of vector \p b from \p a, with respect to saturation.
+* - The subtraction of vector \p b from \p a, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2289,7 +2518,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2_sat(const __nv_bfloat162 a, const __nv
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise multiplication of vectors \p a and \p b, 
+* - The result of elementwise multiplication of vectors \p a and \p b, 
 * with respect to saturation. 
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -2313,7 +2542,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2_sat(const __nv_bfloat162 a, const __nv
 * \param[in] c - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c. 
+* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2334,7 +2563,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hfma2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] c - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c, 
+* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c, 
 * with respect to saturation. 
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -2354,7 +2583,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hfma2_sat(const __nv_bfloat162 a, const __nv
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval Returns \p a with both halves negated. 
+* - Returns \p a with both halves negated. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2369,7 +2598,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hneg2(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The absolute value of a.
+* - The absolute value of a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2389,7 +2618,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __habs(const __nv_bfloat16 a);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The sum of \p a and \p b.
+* - The sum of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2409,7 +2638,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hadd(const __nv_bfloat16 a, const __nv_bfloat
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of subtracting \p b from \p a. 
+* - The result of subtracting \p b from \p a. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2429,7 +2658,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hsub(const __nv_bfloat16 a, const __nv_bfloat
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of multiplying \p a and \p b. 
+* - The result of multiplying \p a and \p b. 
 */
 __CUDA_BF16_DECL__ __nv_bfloat16 __hmul(const __nv_bfloat16 a, const __nv_bfloat16 b);
 /**
@@ -2445,7 +2674,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hmul(const __nv_bfloat16 a, const __nv_bfloat
 * \param[in] b - nv_bfloat16. Is only being read.
 *
 * \returns nv_bfloat16
-* \retval The sum of \p a and \p b.
+* - The sum of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2465,7 +2694,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hadd_rn(const __nv_bfloat16 a, const __nv_bfl
 * \param[in] b - nv_bfloat16. Is only being read.
 *
 * \returns nv_bfloat16
-* \retval The result of subtracting \p b from \p a.
+* - The result of subtracting \p b from \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2485,7 +2714,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hsub_rn(const __nv_bfloat16 a, const __nv_bfl
 * \param[in] b - nv_bfloat16. Is only being read.
 *
 * \returns nv_bfloat16
-* \retval The result of multiplying \p a and \p b.
+* - The result of multiplying \p a and \p b.
 */
 __CUDA_BF16_DECL__ __nv_bfloat16 __hmul_rn(const __nv_bfloat16 a, const __nv_bfloat16 b);
 /**
@@ -2501,7 +2730,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hmul_rn(const __nv_bfloat16 a, const __nv_bfl
 * \param[in] b - nv_bfloat16. Is only being read. 
 * 
 * \returns nv_bfloat16
-* \retval The result of dividing \p a by \p b. 
+* - The result of dividing \p a by \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2519,7 +2748,7 @@ __CUDA_BF16_DECL__  __nv_bfloat16 __hdiv(const __nv_bfloat16 a, const __nv_bfloa
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The sum of \p a and \p b, with respect to saturation.
+* - The sum of \p a and \p b, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2538,7 +2767,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hadd_sat(const __nv_bfloat16 a, const __nv_bf
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of subtraction of \p b from \p a, with respect to saturation.
+* - The result of subtraction of \p b from \p a, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2557,7 +2786,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hsub_sat(const __nv_bfloat16 a, const __nv_bf
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of multiplying \p a and \p b, with respect to saturation.
+* - The result of multiplying \p a and \p b, with respect to saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2579,7 +2808,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hmul_sat(const __nv_bfloat16 a, const __nv_bf
 * \param[in] c - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of fused multiply-add operation on \p
+* - The result of fused multiply-add operation on \p
 * a, \p b, and \p c. 
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -2601,7 +2830,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hfma(const __nv_bfloat16 a, const __nv_bfloat
 * \param[in] c - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The result of fused multiply-add operation on \p
+* - The result of fused multiply-add operation on \p
 * a, \p b, and \p c, with respect to saturation. 
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -2620,7 +2849,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hfma_sat(const __nv_bfloat16 a, const __nv_bf
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval minus a
+* - minus a
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2640,9 +2869,9 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hneg(const __nv_bfloat16 a);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of if-equal comparison
+* - true if both \p nv_bfloat16 results of if-equal comparison
 * of vectors \p a and \p b are true;
-* \retval false otherwise.
+* - false otherwise.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2662,9 +2891,9 @@ __CUDA_BF16_DECL__ bool __hbeq2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of not-equal comparison
+* - true if both \p nv_bfloat16 results of not-equal comparison
 * of vectors \p a and \p b are true, 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2684,9 +2913,9 @@ __CUDA_BF16_DECL__ bool __hbne2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of less-equal comparison
+* - true if both \p nv_bfloat16 results of less-equal comparison
 * of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2706,9 +2935,9 @@ __CUDA_BF16_DECL__ bool __hble2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of greater-equal
+* - true if both \p nv_bfloat16 results of greater-equal
 * comparison of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2728,9 +2957,9 @@ __CUDA_BF16_DECL__ bool __hbge2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of less-than comparison
+* - true if both \p nv_bfloat16 results of less-than comparison
 * of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2750,9 +2979,9 @@ __CUDA_BF16_DECL__ bool __hblt2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 * 
 * \returns bool 
-* \retval true if both \p nv_bfloat16 results of greater-than
+* - true if both \p nv_bfloat16 results of greater-than
 * comparison of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2772,9 +3001,9 @@ __CUDA_BF16_DECL__ bool __hbgt2(const __nv_bfloat162 a, const __nv_bfloat162 b);
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered if-equal
+* - true if both \p nv_bfloat16 results of unordered if-equal
 * comparison of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2794,9 +3023,9 @@ __CUDA_BF16_DECL__ bool __hbequ2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered not-equal
+* - true if both \p nv_bfloat16 results of unordered not-equal
 * comparison of vectors \p a and \p b are true;
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2816,9 +3045,9 @@ __CUDA_BF16_DECL__ bool __hbneu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered less-equal
+* - true if both \p nv_bfloat16 results of unordered less-equal
 * comparison of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2839,9 +3068,9 @@ __CUDA_BF16_DECL__ bool __hbleu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered
+* - true if both \p nv_bfloat16 results of unordered
 * greater-equal comparison of vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2861,9 +3090,9 @@ __CUDA_BF16_DECL__ bool __hbgeu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered less-than comparison of 
+* - true if both \p nv_bfloat16 results of unordered less-than comparison of 
 * vectors \p a and \p b are true; 
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2884,9 +3113,9 @@ __CUDA_BF16_DECL__ bool __hbltu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat162. Is only being read. 
 *
 * \returns bool
-* \retval true if both \p nv_bfloat16 results of unordered
+* - true if both \p nv_bfloat16 results of unordered
 * greater-than comparison of vectors \p a and \p b are true;
-* \retval false otherwise. 
+* - false otherwise. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2903,7 +3132,7 @@ __CUDA_BF16_DECL__ bool __hbgtu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of if-equal comparison of \p a and \p b. 
+* - The boolean result of if-equal comparison of \p a and \p b. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2920,7 +3149,7 @@ __CUDA_BF16_DECL__ bool __heq(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of not-equal comparison of \p a and \p b.
+* - The boolean result of not-equal comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2937,7 +3166,7 @@ __CUDA_BF16_DECL__ bool __hne(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of less-equal comparison of \p a and \p b.
+* - The boolean result of less-equal comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2954,7 +3183,7 @@ __CUDA_BF16_DECL__ bool __hle(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of greater-equal comparison of \p a and \p b.
+* - The boolean result of greater-equal comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2971,7 +3200,7 @@ __CUDA_BF16_DECL__ bool __hge(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of less-than comparison of \p a and \p b.
+* - The boolean result of less-than comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -2988,7 +3217,7 @@ __CUDA_BF16_DECL__ bool __hlt(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of greater-than comparison of \p a and \p b.
+* - The boolean result of greater-than comparison of \p a and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3005,7 +3234,7 @@ __CUDA_BF16_DECL__ bool __hgt(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered if-equal comparison of \p a and
+* - The boolean result of unordered if-equal comparison of \p a and
 * \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3023,7 +3252,7 @@ __CUDA_BF16_DECL__ bool __hequ(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered not-equal comparison of \p a and
+* - The boolean result of unordered not-equal comparison of \p a and
 * \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3041,7 +3270,7 @@ __CUDA_BF16_DECL__ bool __hneu(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered less-equal comparison of \p a and
+* - The boolean result of unordered less-equal comparison of \p a and
 * \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3059,7 +3288,7 @@ __CUDA_BF16_DECL__ bool __hleu(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered greater-equal comparison of \p a
+* - The boolean result of unordered greater-equal comparison of \p a
 * and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3077,7 +3306,7 @@ __CUDA_BF16_DECL__ bool __hgeu(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered less-than comparison of \p a and
+* - The boolean result of unordered less-than comparison of \p a and
 * \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3095,7 +3324,7 @@ __CUDA_BF16_DECL__ bool __hltu(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] b - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval The boolean result of unordered greater-than comparison of \p a
+* - The boolean result of unordered greater-than comparison of \p a
 * and \p b.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3111,7 +3340,7 @@ __CUDA_BF16_DECL__ bool __hgtu(const __nv_bfloat16 a, const __nv_bfloat16 b);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns bool
-* \retval true iff argument is NaN. 
+* - true iff argument is NaN. 
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3206,7 +3435,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hmin_nan(const __nv_bfloat16 a, const __nv_bf
 * \param[in] c - nv_bfloat16. Is only being read.
 *
 * \returns nv_bfloat16
-* \retval The result of fused multiply-add operation on \p
+* - The result of fused multiply-add operation on \p
 * a, \p b, and \p c with relu saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
@@ -3228,7 +3457,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hfma_relu(const __nv_bfloat16 a, const __nv_b
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise maximum of vectors \p a  and \p b
+* - The result of elementwise maximum of vectors \p a  and \p b
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3249,7 +3478,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmax2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise minimum of vectors \p a  and \p b
+* - The result of elementwise minimum of vectors \p a  and \p b
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3269,7 +3498,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmin2(const __nv_bfloat162 a, const __nv_bfl
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise maximum of vectors \p a  and \p b, with NaNs pass through
+* - The result of elementwise maximum of vectors \p a  and \p b, with NaNs pass through
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3289,7 +3518,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmax2_nan(const __nv_bfloat162 a, const __nv
 * \param[in] b - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise minimum of vectors \p a  and \p b, with NaNs pass through
+* - The result of elementwise minimum of vectors \p a  and \p b, with NaNs pass through
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3311,7 +3540,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmin2_nan(const __nv_bfloat162 a, const __nv
 * \param[in] c - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c with relu saturation.
+* - The result of elementwise fused multiply-add operation on vectors \p a, \p b, and \p c with relu saturation.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3330,7 +3559,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hfma2_relu(const __nv_bfloat162 a, const __n
 * \param[in] c - nv_bfloat162. Is only being read.
 *
 * \returns nv_bfloat162
-* \retval The result of complex multiply-accumulate operation on complex numbers \p a, \p b, and \p c
+* - The result of complex multiply-accumulate operation on complex numbers \p a, \p b, and \p c
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3346,7 +3575,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hcmadd(const __nv_bfloat162 a, const __nv_bf
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The square root of \p a.
+* - The square root of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3363,7 +3592,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hsqrt(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The reciprocal square root of \p a.
+* - The reciprocal square root of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3378,7 +3607,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hrsqrt(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The reciprocal of \p a.
+* - The reciprocal of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3394,7 +3623,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hrcp(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The natural logarithm of \p a.
+* - The natural logarithm of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3410,7 +3639,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hlog(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The binary logarithm of \p a.
+* - The binary logarithm of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3426,7 +3655,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hlog2(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The decimal logarithm of \p a.
+* - The decimal logarithm of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3443,7 +3672,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hlog10(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The natural exponential function on \p a.
+* - The natural exponential function on \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3460,7 +3689,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hexp(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The binary exponential function on \p a.
+* - The binary exponential function on \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3477,7 +3706,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hexp2(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The decimal exponential function on \p a.
+* - The decimal exponential function on \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3492,7 +3721,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hexp10(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The cosine of \p a.
+* - The cosine of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3507,7 +3736,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hcos(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat16. Is only being read. 
 *
 * \returns nv_bfloat16
-* \retval The sine of \p a.
+* - The sine of \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3523,7 +3752,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hsin(const __nv_bfloat16 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise square root on vector \p a.
+* - The elementwise square root on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3540,7 +3769,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2sqrt(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise reciprocal square root on vector \p a.
+* - The elementwise reciprocal square root on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3556,7 +3785,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2rsqrt(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise reciprocal on vector \p a.
+* - The elementwise reciprocal on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3573,7 +3802,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2rcp(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise natural logarithm on vector \p a.
+* - The elementwise natural logarithm on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3590,7 +3819,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2log(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise binary logarithm on vector \p a.
+* - The elementwise binary logarithm on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3607,7 +3836,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2log2(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise decimal logarithm on vector \p a.
+* - The elementwise decimal logarithm on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3624,7 +3853,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2log10(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise exponential function on vector \p a.
+* - The elementwise exponential function on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3641,7 +3870,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 *
 * \returns nv_bfloat162
-* \retval The elementwise binary exponential function on vector \p a.
+* - The elementwise binary exponential function on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3658,7 +3887,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp2(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The elementwise decimal exponential function on vector \p a.
+* - The elementwise decimal exponential function on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3674,7 +3903,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp10(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The elementwise cosine on vector \p a.
+* - The elementwise cosine on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3689,7 +3918,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2cos(const __nv_bfloat162 a);
 * \param[in] a - nv_bfloat162. Is only being read. 
 * 
 * \returns nv_bfloat162
-* \retval The elementwise sine on vector \p a.
+* - The elementwise sine on vector \p a.
 * \internal
 * \exception-guarantee no-throw guarantee
 * \behavior reentrant, thread safe
@@ -3710,7 +3939,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2sin(const __nv_bfloat162 a);
 * \param[in] val - __nv_bfloat162. The value to be added.
 * 
 * \returns __nv_bfloat162
-* \retval The old value read from \p address.
+* - The old value read from \p address.
 * 
 * \note_ref_guide_atomic
 */
@@ -3728,13 +3957,13 @@ __CUDA_BF16_DECL__ __nv_bfloat162 atomicAdd(__nv_bfloat162 *const address, const
 * \param[in] val - __nv_bfloat16. The value to be added.
 * 
 * \returns __nv_bfloat16
-* \retval The old value read from \p address.
+* - The old value read from \p address.
 * 
 * \note_ref_guide_atomic
 */
 __CUDA_BF16_DECL__ __nv_bfloat16 atomicAdd(__nv_bfloat16 *const address, const __nv_bfloat16 val);
 
-#endif /* defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)) */
+#endif /* defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800) || defined(_NVHPC_CUDA)) */
 
 #undef __CUDA_BF16_DECL__
 #undef __CUDA_HOSTDEVICE_BF16_DECL__

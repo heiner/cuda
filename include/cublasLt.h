@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2021 NVIDIA Corporation. All rights reserved.
+ * Copyright 1993-2022 NVIDIA Corporation. All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -84,6 +84,21 @@ size_t CUBLASWINAPI cublasLtGetCudartVersion(void);
 
 cublasStatus_t CUBLASWINAPI cublasLtGetProperty(libraryPropertyType type, int* value);
 
+cublasStatus_t CUBLASWINAPI cublasLtHeuristicsCacheGetCapacity(size_t* capacity);
+cublasStatus_t CUBLASWINAPI cublasLtHeuristicsCacheSetCapacity(size_t capacity);
+
+/** Restricts usage of CPU instructions (ISA) specified by the flags in the mask.
+ *
+ * Flags can be combined with bitwise OR(|) operator. Supported flags:
+ * - 0x1 -- x86-64 AVX512 ISA
+ *
+ * Default mask: 0 (any applicable ISA is allowed).
+ *
+ * The function returns the previous value of the mask.
+ * The function takes precedence over the environment variable CUBLASLT_DISABLE_CPU_INSTRUCTIONS_MASK.
+ */
+unsigned CUBLASWINAPI cublasLtDisableCpuInstructionsSetMask(unsigned mask);
+
 /** Semi-opaque descriptor for matrix memory layout
  */
 typedef struct {
@@ -106,7 +121,7 @@ typedef struct {
 /** Semi-opaque descriptor for cublasLtMatmul() operation details
  */
 typedef struct {
-  uint64_t data[12];
+  uint64_t data[23];
 } cublasLtMatmulDescOpaque_t;
 
 /** Opaque descriptor for cublasLtMatmul() operation details
@@ -126,7 +141,7 @@ typedef cublasLtMatrixTransformDescOpaque_t* cublasLtMatrixTransformDesc_t;
 /** Semi-opaque descriptor for cublasLtMatmulPreference() operation details
  */
 typedef struct {
-  uint64_t data[10];
+  uint64_t data[8];
 } cublasLtMatmulPreferenceOpaque_t;
 
 /** Opaque descriptor for cublasLtMatmulAlgoGetHeuristic() configuration
@@ -170,6 +185,10 @@ typedef enum {
   CUBLASLT_MATMUL_TILE_128x160 = 29,
   CUBLASLT_MATMUL_TILE_160x128 = 30,
   CUBLASLT_MATMUL_TILE_192x128 = 31,
+  CUBLASLT_MATMUL_TILE_128x192 = 32,
+  CUBLASLT_MATMUL_TILE_128x96 = 33,
+  CUBLASLT_MATMUL_TILE_32x256 = 34,
+  CUBLASLT_MATMUL_TILE_256x32 = 35,
   CUBLASLT_MATMUL_TILE_END
 } cublasLtMatmulTile_t;
 
@@ -207,10 +226,89 @@ typedef enum {
   CUBLASLT_MATMUL_STAGES_8x4 = 26,
   CUBLASLT_MATMUL_STAGES_16x10 = 27,
   CUBLASLT_MATMUL_STAGES_8x5 = 28,
-  CUBLASLT_MATMUL_STAGES_16x80 = 29,
-  CUBLASLT_MATMUL_STAGES_64x80 = 30,
+  CUBLASLT_MATMUL_STAGES_8x3 = 31,
+  CUBLASLT_MATMUL_STAGES_8xAUTO = 32,
+  CUBLASLT_MATMUL_STAGES_16xAUTO = 33,
+  CUBLASLT_MATMUL_STAGES_32xAUTO = 34,
+  CUBLASLT_MATMUL_STAGES_64xAUTO = 35,
+  CUBLASLT_MATMUL_STAGES_128xAUTO = 36,
   CUBLASLT_MATMUL_STAGES_END
 } cublasLtMatmulStages_t;
+
+/** Thread Block Cluster size
+ *
+ * Typically dimensioned similar to cublasLtMatmulTile_t, with the third coordinate unused at this time.
+ */
+typedef enum {
+  /** Let library pick cluster shape automatically */
+  CUBLASLT_CLUSTER_SHAPE_AUTO = 0,
+  CUBLASLT_CLUSTER_SHAPE_1x1x1 = 2,
+  CUBLASLT_CLUSTER_SHAPE_2x1x1 = 3,
+  CUBLASLT_CLUSTER_SHAPE_4x1x1 = 4,
+  CUBLASLT_CLUSTER_SHAPE_1x2x1 = 5,
+  CUBLASLT_CLUSTER_SHAPE_2x2x1 = 6,
+  CUBLASLT_CLUSTER_SHAPE_4x2x1 = 7,
+  CUBLASLT_CLUSTER_SHAPE_1x4x1 = 8,
+  CUBLASLT_CLUSTER_SHAPE_2x4x1 = 9,
+  CUBLASLT_CLUSTER_SHAPE_4x4x1 = 10,
+  CUBLASLT_CLUSTER_SHAPE_8x1x1 = 11,
+  CUBLASLT_CLUSTER_SHAPE_1x8x1 = 12,
+  CUBLASLT_CLUSTER_SHAPE_8x2x1 = 13,
+  CUBLASLT_CLUSTER_SHAPE_2x8x1 = 14,
+  CUBLASLT_CLUSTER_SHAPE_16x1x1 = 15,
+  CUBLASLT_CLUSTER_SHAPE_1x16x1 = 16,
+  CUBLASLT_CLUSTER_SHAPE_3x1x1 = 17,
+  CUBLASLT_CLUSTER_SHAPE_5x1x1 = 18,
+  CUBLASLT_CLUSTER_SHAPE_6x1x1 = 19,
+  CUBLASLT_CLUSTER_SHAPE_7x1x1 = 20,
+  CUBLASLT_CLUSTER_SHAPE_9x1x1 = 21,
+  CUBLASLT_CLUSTER_SHAPE_10x1x1 = 22,
+  CUBLASLT_CLUSTER_SHAPE_11x1x1 = 23,
+  CUBLASLT_CLUSTER_SHAPE_12x1x1 = 24,
+  CUBLASLT_CLUSTER_SHAPE_13x1x1 = 25,
+  CUBLASLT_CLUSTER_SHAPE_14x1x1 = 26,
+  CUBLASLT_CLUSTER_SHAPE_15x1x1 = 27,
+  CUBLASLT_CLUSTER_SHAPE_3x2x1 = 28,
+  CUBLASLT_CLUSTER_SHAPE_5x2x1 = 29,
+  CUBLASLT_CLUSTER_SHAPE_6x2x1 = 30,
+  CUBLASLT_CLUSTER_SHAPE_7x2x1 = 31,
+  CUBLASLT_CLUSTER_SHAPE_1x3x1 = 32,
+  CUBLASLT_CLUSTER_SHAPE_2x3x1 = 33,
+  CUBLASLT_CLUSTER_SHAPE_3x3x1 = 34,
+  CUBLASLT_CLUSTER_SHAPE_4x3x1 = 35,
+  CUBLASLT_CLUSTER_SHAPE_5x3x1 = 36,
+  CUBLASLT_CLUSTER_SHAPE_3x4x1 = 37,
+  CUBLASLT_CLUSTER_SHAPE_1x5x1 = 38,
+  CUBLASLT_CLUSTER_SHAPE_2x5x1 = 39,
+  CUBLASLT_CLUSTER_SHAPE_3x5x1 = 40,
+  CUBLASLT_CLUSTER_SHAPE_1x6x1 = 41,
+  CUBLASLT_CLUSTER_SHAPE_2x6x1 = 42,
+  CUBLASLT_CLUSTER_SHAPE_1x7x1 = 43,
+  CUBLASLT_CLUSTER_SHAPE_2x7x1 = 44,
+  CUBLASLT_CLUSTER_SHAPE_1x9x1 = 45,
+  CUBLASLT_CLUSTER_SHAPE_1x10x1 = 46,
+  CUBLASLT_CLUSTER_SHAPE_1x11x1 = 47,
+  CUBLASLT_CLUSTER_SHAPE_1x12x1 = 48,
+  CUBLASLT_CLUSTER_SHAPE_1x13x1 = 49,
+  CUBLASLT_CLUSTER_SHAPE_1x14x1 = 50,
+  CUBLASLT_CLUSTER_SHAPE_1x15x1 = 51,
+  CUBLASLT_CLUSTER_SHAPE_END
+} cublasLtClusterShape_t;
+
+/** Inner size of the kernel
+ *
+ * Represents various aspects of internal kernel design, that don't impact CUDA grid size but may have other more subtle
+ * effects.
+ *
+ */
+typedef enum {
+  CUBLASLT_MATMUL_INNER_SHAPE_UNDEFINED = 0,
+  CUBLASLT_MATMUL_INNER_SHAPE_MMA884 = 1,
+  CUBLASLT_MATMUL_INNER_SHAPE_MMA1684 = 2,
+  CUBLASLT_MATMUL_INNER_SHAPE_MMA1688 = 3,
+  CUBLASLT_MATMUL_INNER_SHAPE_MMA16816 = 4,
+  CUBLASLT_MATMUL_INNER_SHAPE_END
+} cublasLtMatmulInnerShape_t;
 
 /** Pointer mode to use for alpha/beta */
 typedef enum {
@@ -227,11 +325,8 @@ typedef enum {
   CUBLASLT_POINTER_MODE_ALPHA_DEVICE_VECTOR_BETA_HOST = 4,
 } cublasLtPointerMode_t;
 
-/** Mask to define and query pointer mode capability */
+/** Mask to define pointer mode capability */
 typedef enum {
-  /** no initial filtering is performed when querying pointer mode capabilities, will use gemm pointer mode defined in
-     operation description **/
-  CUBLASLT_POINTER_MODE_MASK_NO_FILTERING = 0,
   /** see CUBLASLT_POINTER_MODE_HOST */
   CUBLASLT_POINTER_MODE_MASK_HOST = 1,
   /** see CUBLASLT_POINTER_MODE_DEVICE */
@@ -264,6 +359,8 @@ typedef enum {
 #define CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_32F (0x08ull << 16)
 #define CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_64F (0x10ull << 16)
 #define CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8I (0x20ull << 16)
+#define CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8F_E4M3 (0x40ull << 16)
+#define CUBLASLT_NUMERICAL_IMPL_FLAGS_INPUT_8F_E5M2 (0x80ull << 16)
 #define CUBLASLT_NUMERICAL_IMPL_FLAGS_OP_INPUT_TYPE_MASK (0xffull << 16)
 
 #define CUBLASLT_NUMERICAL_IMPL_FLAGS_GAUSSIAN (0x01ull << 32)
@@ -575,9 +672,8 @@ typedef enum {
   /** Bias or bias gradient vector pointer in the device memory.
    *
    * Bias case. See CUBLASLT_EPILOGUE_BIAS.
-   * Bias vector elements are the same type as
-   * the output elements (Ctype) with the exception of IMMA kernels with computeType=CUDA_R_32I and Ctype=CUDA_R_8I
-   * where the bias vector elements are the same type as alpha, beta (CUBLASLT_MATMUL_DESC_SCALE_TYPE=CUDA_R_32F).
+   * For bias data type see CUBLASLT_MATMUL_DESC_BIAS_DATA_TYPE.
+   *
    * Bias vector length must match matrix D rows count.
    *
    * Bias gradient case. See CUBLASLT_EPILOGUE_DRELU_BGRAD and CUBLASLT_EPILOGUE_DGELU_BGRAD.
@@ -612,8 +708,7 @@ typedef enum {
    * - Input of GELU input matrix for backward pass when
    *   CUBLASLT_EPILOGUE_DGELU_BGRAD epilogue is used.
    *
-   * GELU input matrix elements type is the same as the type of elements of
-   * the output matrix.
+   * For aux data type see CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_DATA_TYPE.
    *
    * Routines that don't dereference this pointer, like cublasLtMatmulAlgoGetHeuristic()
    * depend on its value to determine expected pointer alignment.
@@ -664,11 +759,141 @@ typedef enum {
   CUBLASLT_MATMUL_DESC_ALPHA_VECTOR_BATCH_STRIDE = 14,
 
   /** Number of SMs to target for parallel execution. Optimizes heuristics for execution on a different number of SMs
-   * when user expects a concurrent stream to be using some of the device resources.
+   *  when user expects a concurrent stream to be using some of the device resources.
    *
-   * int32_t, default: 0 - use the number reported by the device.
+   *  int32_t, default: 0 - use the number reported by the device.
    */
   CUBLASLT_MATMUL_DESC_SM_COUNT_TARGET = 15,
+
+  /** Device pointer to the scale factor value that converts data in matrix A to the compute data type range.
+   *
+   *  The scaling factor value must have the same type as the compute type.
+   *
+   *  If not specified, or set to NULL, the scaling factor is assumed to be 1.
+   *
+   *  If set for an unsupported matrix data, scale, and compute type combination, calling cublasLtMatmul()
+   *  will return CUBLAS_INVALID_VALUE.
+   *
+   *  const void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_A_SCALE_POINTER = 17,
+
+  /** Device pointer to the scale factor value to convert data in matrix B to compute data type range.
+   *
+   *  The scaling factor value must have the same type as the compute type.
+   *
+   *  If not specified, or set to NULL, the scaling factor is assumed to be 1.
+   *
+   *  If set for an unsupported matrix data, scale, and compute type combination, calling cublasLtMatmul()
+   *  will return CUBLAS_INVALID_VALUE.
+   *
+   *  const void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_B_SCALE_POINTER = 18,
+
+  /** Device pointer to the scale factor value to convert data in matrix C to compute data type range.
+   *
+   *  The scaling factor value must have the same type as the compute type.
+   *
+   *  If not specified, or set to NULL, the scaling factor is assumed to be 1.
+   *
+   *  If set for an unsupported matrix data, scale, and compute type combination, calling cublasLtMatmul()
+   *  will return CUBLAS_INVALID_VALUE.
+   *
+   *  const void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_C_SCALE_POINTER = 19,
+
+  /** Device pointer to the scale factor value to convert data in matrix D to compute data type range.
+   *
+   *  The scaling factor value must have the same type as the compute type.
+   *
+   *  If not specified, or set to NULL, the scaling factor is assumed to be 1.
+   *
+   *  If set for an unsupported matrix data, scale, and compute type combination, calling cublasLtMatmul()
+   *  will return CUBLAS_INVALID_VALUE.
+   *
+   *  const void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_D_SCALE_POINTER = 20,
+
+  /** Device pointer to the memory location that on completion will be set to the maximum of absolute values in the
+   *  output matrix.
+   *
+   *  The computed value has the same type as the compute type.
+   *
+   *  If not specified or set to NULL, the maximum absolute value is not computed. If set for an unsupported matrix
+   *  data, scale, and compute type combination, calling cublasLtMatmul() will return CUBLAS_INVALID_VALUE.
+   *
+   *  void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_AMAX_D_POINTER = 21,
+
+  /** Type of the data to be stored to the memory pointed to by CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER.
+   *
+   *  If unset, the data type defaults to the type of elements of the output matrix with some exceptions, see details
+   * below.
+   *
+   *  ReLu uses a bit-mask.
+   *
+   *  GELU input matrix elements type is the same as the type of elements of
+   *  the output matrix with some exceptions, see details below.
+   *
+   *  For fp8 kernels with output type CUDA_R_8F_E4M3 the aux data type can be CUDA_R_8F_E4M3 or CUDA_R_16F with some
+   *  restrictions.  See https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmulDescAttributes_t for more details.
+   *
+   *  If set for an unsupported matrix data, scale, and compute type combination, calling cublasLtMatmul()
+   *  will return CUBLAS_INVALID_VALUE.
+   *
+   *  int32_t based on cudaDataType, default: -1
+   */
+  CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_DATA_TYPE = 22,
+
+  /** Device pointer to the scaling factor value to convert results from compute type data range to storage
+   *  data range in the auxiliary matrix that is set via CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER.
+   *
+   *  The scaling factor value must have the same type as the compute type.
+   *
+   *  If not specified, or set to NULL, the scaling factor is assumed to be 1. If set for an unsupported matrix data,
+   *  scale, and compute type combination, calling cublasLtMatmul() will return CUBLAS_INVALID_VALUE.
+   *
+   *  void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_SCALE_POINTER = 23,
+
+  /** Device pointer to the memory location that on completion will be set to the maximum of absolute values in the
+   *  buffer that is set via CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_POINTER.
+   *
+   *  The computed value has the same type as the compute type.
+   *
+   *  If not specified or set to NULL, the maximum absolute value is not computed. If set for an unsupported matrix
+   *  data, scale, and compute type combination, calling cublasLtMatmul() will return CUBLAS_INVALID_VALUE.
+   *
+   *  void *, default: NULL
+   */
+  CUBLASLT_MATMUL_DESC_EPILOGUE_AUX_AMAX_POINTER = 24,
+
+  /** Flag for managing fp8 fast accumulation mode.
+   *  When enabled, problem execution might be faster but at the cost of lower accuracy because intermediate results
+   *  will not periodically be promoted to a higher precision.
+   *
+   *  int8_t, default: 0 - fast accumulation mode is disabled.
+   */
+  CUBLASLT_MATMUL_DESC_FAST_ACCUM = 25,
+
+  /** Type of bias or bias gradient vector in the device memory.
+   *
+   * Bias case: see CUBLASLT_EPILOGUE_BIAS.
+   *
+   * Bias vector elements are the same type as the elements of output matrix (Dtype) with the following exceptions:
+   * - IMMA kernels with computeType=CUDA_R_32I and Ctype=CUDA_R_8I where the bias vector elements
+   *   are the same type as alpha, beta (CUBLASLT_MATMUL_DESC_SCALE_TYPE=CUDA_R_32F)
+   * - fp8 kernels with an output type of CUDA_R_32F, CUDA_R_8F_E4M3 or CUDA_R_8F_E5M2, See
+   *   https://docs.nvidia.com/cuda/cublas/index.html#cublasLtMatmul for details.
+   *
+   * int32_t based on cudaDataType, default: -1
+   */
+  CUBLASLT_MATMUL_DESC_BIAS_DATA_TYPE = 26,
 } cublasLtMatmulDescAttributes_t;
 
 /** Internal. Do not use directly.
@@ -845,13 +1070,6 @@ cublasStatus_t CUBLASWINAPI cublasLtMatrixTransformDescGetAttribute(  //
     size_t sizeInBytes,
     size_t* sizeWritten);
 
-/** For computation with complex numbers, this enum allows to apply the Gauss Complexity reduction algorithm
- */
-typedef enum {
-  CUBLASLT_3M_MODE_DISALLOWED = 0,
-  CUBLASLT_3M_MODE_ALLOWED = 1,
-} cublasLt3mMode_t;
-
 /** Reduction scheme for portions of the dot-product calculated in parallel (a. k. a. "split - K").
  */
 typedef enum {
@@ -1022,15 +1240,6 @@ typedef enum {
    */
   CUBLASLT_MATMUL_PREF_MAX_WORKSPACE_BYTES = 1,
 
-  /** Math mode mask, see cublasMath_t.
-   *
-   * Only algorithms with CUBLASLT_ALGO_CAP_MATHMODE_IMPL that is not masked out by this attribute are allowed.
-   *
-   * uint32_t, default: 1 (allows both default and tensor op math)
-   * DEPRECATED, will be removed in a future release, see cublasLtNumericalImplFlags_t for replacement
-   */
-  CUBLASLT_MATMUL_PREF_MATH_MODE_MASK = 2,
-
   /** Reduction scheme mask, see cublasLtReductionScheme_t. Filters heuristic result to only include algo configs that
    * use one of the required modes.
    *
@@ -1039,15 +1248,6 @@ typedef enum {
    * uint32_t, default: CUBLASLT_REDUCTION_SCHEME_MASK (allows all reduction schemes)
    */
   CUBLASLT_MATMUL_PREF_REDUCTION_SCHEME_MASK = 3,
-
-  /** Gaussian mode mask, see cublasLt3mMode_t.
-   *
-   * Only algorithms with CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL that is not masked out by this attribute are allowed.
-   *
-   * uint32_t, default: CUBLASLT_3M_MODE_ALLOWED (allows both gaussian and non-gaussian algorithms)
-   * DEPRECATED, will be removed in a future release, see cublasLtNumericalImplFlags_t for replacement
-   */
-  CUBLASLT_MATMUL_PREF_GAUSSIAN_MODE_MASK = 4,
 
   /** Minimum buffer alignment for matrix A (in bytes).
    *
@@ -1095,37 +1295,12 @@ typedef enum {
    */
   CUBLASLT_MATMUL_PREF_MAX_WAVES_COUNT = 9,
 
-  /** Pointer mode mask, see cublasLtPointerModeMask_t. Filters heuristic result to only include algorithms that support
-   * all required modes.
-   *
-   * uint32_t, default: (CUBLASLT_POINTER_MODE_MASK_HOST | CUBLASLT_POINTER_MODE_MASK_DEVICE) (only allows algorithms
-   * that support both regular host and device pointers)
-   */
-  CUBLASLT_MATMUL_PREF_POINTER_MODE_MASK = 10,
-
-  /** Epilogue selector mask, see cublasLtEpilogue_t. Filters heuristic result to only include algorithms that support
-   * all required operations.
-   *
-   * uint32_t, default: CUBLASLT_EPILOGUE_DEFAULT (only allows algorithms that support default epilogue)
-   */
-  CUBLASLT_MATMUL_PREF_EPILOGUE_MASK = 11,
-
   /** Numerical implementation details mask, see cublasLtNumericalImplFlags_t. Filters heuristic result to only include
    * algorithms that use the allowed implementations.
    *
    * uint64_t, default: uint64_t(-1) (allow everything)
    */
   CUBLASLT_MATMUL_PREF_IMPL_MASK = 12,
-
-  /** Number of SMs to target for parallel execution. Optimizes heuristics for execution on a different number of SMs
-   * when user expects a concurrent stream to be using some of the device resources.
-   *
-   * Overrides the SM count target set in the matrix multiplication descriptor (see cublasLtMatmulDescAttributes_t).
-   *
-   * int32_t, default: 0 - use the number reported by the device.
-   * DEPRECATED, will be removed in a future release, see cublasLtMatmulDescAttributes_t for replacement
-   */
-  CUBLASLT_MATMUL_PREF_SM_COUNT_TARGET = 13,
 } cublasLtMatmulPreferenceAttributes_t;
 
 /** Internal. Do not use directly.
@@ -1332,6 +1507,7 @@ typedef enum {
    * int32_t, 0 means no support, supported otherwise
    */
   CUBLASLT_ALGO_CAP_SPLITK_SUPPORT = 0,
+
   /** reduction scheme mask, see cublasLtReductionScheme_t; shows supported reduction schemes, if reduction scheme is
    * not masked out it is supported.
    *
@@ -1341,26 +1517,31 @@ typedef enum {
    * uint32_t
    */
   CUBLASLT_ALGO_CAP_REDUCTION_SCHEME_MASK = 1,
+
   /** support for cta swizzling, see CUBLASLT_ALGO_CONFIG_CTA_SWIZZLING
    *
    * uint32_t, 0 means no support, 1 means supported value of 1, other values are reserved
    */
   CUBLASLT_ALGO_CAP_CTA_SWIZZLING_SUPPORT = 2,
+
   /** support strided batch
    *
    * int32_t, 0 means no support, supported otherwise
    */
   CUBLASLT_ALGO_CAP_STRIDED_BATCH_SUPPORT = 3,
+
   /** support results out of place (D != C in D = alpha.A.B + beta.C)
    *
    * int32_t, 0 means no support, supported otherwise
    */
   CUBLASLT_ALGO_CAP_OUT_OF_PLACE_RESULT_SUPPORT = 4,
+
   /** syrk/herk support (on top of regular gemm)
    *
    * int32_t, 0 means no support, supported otherwise
    */
   CUBLASLT_ALGO_CAP_UPLO_SUPPORT = 5,
+
   /** tile ids possible to use, see cublasLtMatmulTile_t; if no tile ids are supported use
    * CUBLASLT_MATMUL_TILE_UNDEFINED
    *
@@ -1369,24 +1550,14 @@ typedef enum {
    * array of uint32_t
    */
   CUBLASLT_ALGO_CAP_TILE_IDS = 6,
+
   /** custom option range is from 0 to CUBLASLT_ALGO_CAP_CUSTOM_OPTION_MAX (inclusive), see
    * CUBLASLT_ALGO_CONFIG_CUSTOM_OPTION
    *
    * int32_t
    */
   CUBLASLT_ALGO_CAP_CUSTOM_OPTION_MAX = 7,
-  /** whether algorithm is using regular compute or tensor operations
-   *
-   * int32_t 0 means regular compute, 1 means tensor operations;
-   * DEPRECATED
-   */
-  CUBLASLT_ALGO_CAP_MATHMODE_IMPL = 8,
-  /** whether algorithm implements gaussian optimization of complex matrix multiplication, see cublasMath_t
-   *
-   * int32_t 0 means regular compute, 1 means gaussian;
-   * DEPRECATED
-   */
-  CUBLASLT_ALGO_CAP_GAUSSIAN_IMPL = 9,
+
   /** whether algorithm supports custom (not COL or ROW memory order), see cublasLtOrder_t
    *
    * int32_t 0 means only COL and ROW memory order is allowed, non-zero means that algo might have different
@@ -1405,6 +1576,7 @@ typedef enum {
    * uint32_t, see cublasLtEpilogue_t
    */
   CUBLASLT_ALGO_CAP_EPILOGUE_MASK = 12,
+
   /** stages ids possible to use, see cublasLtMatmulStages_t; if no stages ids are supported use
    * CUBLASLT_MATMUL_STAGES_UNDEFINED
    *
@@ -1413,34 +1585,40 @@ typedef enum {
    * array of uint32_t
    */
   CUBLASLT_ALGO_CAP_STAGES_IDS = 13,
+
   /** support for nagative ld for all of the matrices
    *
    * int32_t 0 means no support, supported otherwise
    */
   CUBLASLT_ALGO_CAP_LD_NEGATIVE = 14,
+
   /** details about algorithm's implementation that affect it's numerical behavior
    *
    * uint64_t, see cublasLtNumericalImplFlags_t
    */
   CUBLASLT_ALGO_CAP_NUMERICAL_IMPL_FLAGS = 15,
+
   /** minimum alignment required for A matrix in bytes
    *  (required for buffer pointer, leading dimension, and possibly other strides defined for matrix memory order)
    *
    * uint32_t
    */
   CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_A_BYTES = 16,
+
   /** minimum alignment required for B matrix in bytes
    *  (required for buffer pointer, leading dimension, and possibly other strides defined for matrix memory order)
    *
    * uint32_t
    */
   CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_B_BYTES = 17,
+
   /** minimum alignment required for C matrix in bytes
    *  (required for buffer pointer, leading dimension, and possibly other strides defined for matrix memory order)
    *
    * uint32_t
    */
   CUBLASLT_ALGO_CAP_MIN_ALIGNMENT_C_BYTES = 18,
+
   /** minimum alignment required for D matrix in bytes
    *  (required for buffer pointer, leading dimension, and possibly other strides defined for matrix memory order)
    *
@@ -1490,10 +1668,11 @@ typedef enum {
    * uint32_t, default: CUBLASLT_MATMUL_TILE_UNDEFINED
    */
   CUBLASLT_ALGO_CONFIG_TILE_ID = 1,
-  /** number of K splits, if != 1, SPLITK_NUM parts of matrix multiplication will be computed in parallel,
-   * and then results accumulated according to REDUCTION_SCHEME
+  /** Number of K splits. If the number of K splits is greater than one, SPLITK_NUM parts
+   * of matrix multiplication will be computed in parallel. The results will be accumulated
+   * according to CUBLASLT_ALGO_CONFIG_REDUCTION_SCHEME
    *
-   * uint32_t, default: 1
+   * int32_t, default: 1
    */
   CUBLASLT_ALGO_CONFIG_SPLITK_NUM = 2,
   /** reduction scheme, see cublasLtReductionScheme_t
@@ -1519,6 +1698,16 @@ typedef enum {
    * uint32_t, default: CUBLASLT_MATMUL_STAGES_UNDEFINED
    */
   CUBLASLT_ALGO_CONFIG_STAGES_ID = 6,
+  /** inner shape id, see cublasLtMatmulInnerShape_t
+   *
+   * uint16_t, default: 0 (CUBLASLT_MATMUL_INNER_SHAPE_UNDEFINED)
+   */
+  CUBLASLT_ALGO_CONFIG_INNER_SHAPE_ID = 7,
+  /** Thread Block Cluster shape id, see cublasLtClusterShape_t. Defines cluster size to use.
+   *
+   * uint16_t, default: 0 (CUBLASLT_CLUSTER_SHAPE_AUTO)
+   */
+  CUBLASLT_ALGO_CONFIG_CLUSTER_SHAPE_ID = 8,
 } cublasLtMatmulAlgoConfigAttributes_t;
 
 /** Set algo configuration attribute.

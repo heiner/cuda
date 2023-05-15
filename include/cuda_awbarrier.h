@@ -52,7 +52,7 @@
 
 # include "cuda_awbarrier_primitives.h"
 
-# if !defined(_CUDA_AWBARRIER_ARCH_700_OR_LATER)
+# if !defined(_CUDA_AWBARRIER_SM_TARGET)
 #  error This file requires compute capability 7.0 or greater.
 # endif
 
@@ -83,9 +83,13 @@ public:
     _CUDA_AWBARRIER_QUALIFIER arrival_token arrive();
     _CUDA_AWBARRIER_QUALIFIER arrival_token arrive_and_drop();
     _CUDA_AWBARRIER_QUALIFIER bool timed_wait(arrival_token token, uint32_t hint_cycles);
+    _CUDA_AWBARRIER_QUALIFIER bool timed_wait_parity(bool phase, uint32_t hint_cycles);
     _CUDA_AWBARRIER_QUALIFIER void wait(arrival_token token);
     _CUDA_AWBARRIER_QUALIFIER void arrive_and_wait();
+    _CUDA_AWBARRIER_QUALIFIER bool try_wait(arrival_token token, uint32_t maxSleepNanosec);
+    _CUDA_AWBARRIER_QUALIFIER bool try_wait_parity(bool phase, uint32_t maxSleepNanosec);
     _CUDA_AWBARRIER_STATIC_QUALIFIER __host__ constexpr uint32_t max();
+
 private:
     uint64_t barrier;
     friend _CUDA_AWBARRIER_QUALIFIER void init(awbarrier* barrier, uint32_t expected_count);
@@ -97,7 +101,11 @@ _CUDA_AWBARRIER_QUALIFIER
 uint32_t awbarrier::arrival_token::pending_count() const
 {
     const uint32_t pending_count = _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_token_pending_count(this->token);
+#if (__CUDA_ARCH__ >= 900)
+    return pending_count;
+#else
     return (pending_count >> 15);
+#endif
 }
 
 _CUDA_AWBARRIER_QUALIFIER
@@ -112,7 +120,11 @@ void init(awbarrier* barrier, uint32_t expected_count)
     _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
     _CUDA_AWBARRIER_ASSERT(expected_count > 0 && expected_count <= _CUDA_AWBARRIER_MAX_COUNT);
 
+#if (__CUDA_ARCH__ >= 900)
+    const uint32_t init_count = expected_count;
+#else
     const uint32_t init_count = (expected_count << 15) + expected_count;
+#endif
 
     _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_init(&barrier->barrier, init_count);
 }
@@ -130,10 +142,14 @@ awbarrier::arrival_token awbarrier::arrive()
 {
     _CUDA_AWBARRIER_ASSERT(__isShared(&this->barrier));
 
+ #if (__CUDA_ARCH__ < 900)
     const uint32_t arrive_count = 1 << 15;
     const uint64_t token = _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop_no_complete<false>(&this->barrier, arrive_count);
-
-    (void)_CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<false>(&this->barrier);
+    (void)
+#else
+    const uint64_t token =
+ #endif
+    _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<false>(&this->barrier);
 
     return arrival_token(token);
 }
@@ -143,10 +159,14 @@ awbarrier::arrival_token awbarrier::arrive_and_drop()
 {
     _CUDA_AWBARRIER_ASSERT(__isShared(&this->barrier));
 
+ #if (__CUDA_ARCH__ < 900)
     const uint32_t arrive_count = 1 << 15;
     const uint64_t token = _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop_no_complete<true>(&this->barrier, arrive_count);
-
-    (void)_CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<true>(&this->barrier);
+    (void)
+#else
+    const uint64_t token =
+ #endif
+    _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<true>(&this->barrier);
 
     return arrival_token(token);
 }
@@ -182,6 +202,55 @@ bool awbarrier::timed_wait(arrival_token token, uint32_t hint_cycles)
     }
 
     return false;
+}
+
+_CUDA_AWBARRIER_QUALIFIER
+bool awbarrier::timed_wait_parity(bool phase, uint32_t hint_cycles)
+{
+    constexpr uint64_t max_busy_wait_cycles = 1024;
+    constexpr uint32_t max_sleep_ns = 1 << 20;
+
+    _CUDA_AWBARRIER_ASSERT(__isShared(&this->barrier));
+
+    if (_CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_test_wait_parity(&this->barrier, phase)) {
+        return true;
+    }
+
+    uint64_t start_cycles = clock64();
+    uint64_t elapsed_cycles = 0;
+    uint32_t sleep_ns = 32;
+    while (elapsed_cycles < hint_cycles) {
+        if (_CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_test_wait_parity(&this->barrier, phase)) {
+            return true;
+        }
+
+        if (elapsed_cycles > max_busy_wait_cycles) {
+            __nanosleep(sleep_ns);
+            if (sleep_ns < max_sleep_ns) {
+                sleep_ns *= 2;
+            }
+        }
+
+        elapsed_cycles = clock64() - start_cycles;
+    }
+
+    return false;
+}
+
+_CUDA_AWBARRIER_QUALIFIER
+bool awbarrier::try_wait(arrival_token token, uint32_t maxSleepNanosec)
+{
+    _CUDA_AWBARRIER_ASSERT(__isShared(&this->barrier));
+
+    return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_try_wait(&this->barrier, token.token, maxSleepNanosec);
+}
+
+_CUDA_AWBARRIER_QUALIFIER
+bool awbarrier::try_wait_parity(bool phase, uint32_t maxSleepNanosec)
+{
+    _CUDA_AWBARRIER_ASSERT(__isShared(&this->barrier));
+
+    return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_try_wait_parity(&this->barrier, phase, maxSleepNanosec);
 }
 
 _CUDA_AWBARRIER_QUALIFIER

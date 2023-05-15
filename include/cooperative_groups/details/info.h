@@ -119,9 +119,23 @@
 # define _CG_HAS_MATCH_COLLECTIVE
 #endif
 
+#if (__CUDA_ARCH__ >= 800) || !defined(__CUDA_ARCH__) && (defined(__NVCC__) || defined(__CUDACC_RTC__))
+# define _CG_HAS_OP_REDUX
+#endif
 
+#if ((__CUDA_ARCH__ >= 800) || !defined(__CUDA_ARCH__)) && !defined(_CG_USER_PROVIDED_SHARED_MEMORY)
+# define _CG_HAS_RESERVED_SHARED
+#endif
 
+#if ((__CUDA_ARCH__ >= 900) || !defined(__CUDA_ARCH__)) && \
+    (defined(__NVCC__) || defined(__CUDACC_RTC__) || defined(_CG_CLUSTER_INTRINSICS_AVAILABLE)) && \
+    defined(_CG_CPP11_FEATURES)
+# define _CG_HAS_CLUSTER_GROUP
+#endif
 
+#if (__CUDA_ARCH__ >= 900) || !defined(__CUDA_ARCH__)
+# define _CG_HAS_INSTR_ELECT
+#endif
 
 // Has __half and __half2
 // Only usable if you include the cuda_fp16.h extension, and
@@ -130,14 +144,19 @@
 # define _CG_HAS_FP16_COLLECTIVE
 #endif
 
-#if (__CUDA_ARCH__ >= 800) || !defined(__CUDA_ARCH__)
-# define _CG_HAS_OP_REDUX
-#endif
-
-#if defined(CG_USE_CUDA_STL)
+// Include libcu++ where supported.
+#if defined(_CG_CPP11_FEATURES) && !defined(__QNX__) && !defined(__ibmxl__) && \
+    (defined(__NVCC__) || defined(__CUDACC_RTC__)) && \
+    (defined(__x86_64__) || defined(__aarch64__) || defined(__ppc64__)|| defined(_M_X64) || defined(_M_ARM64)) && \
+    (defined(_MSC_VER) || defined(__GNUC__) || defined(__clang__))
 # define _CG_USE_CUDA_STL
 #else
 # define _CG_USE_OWN_TRAITS
+#endif
+
+#if defined(_CG_USE_CUDA_STL) && (!defined(__CUDA_ARCH__) || \
+    ((!defined(_MSC_VER) && __CUDA_ARCH__ >= 600) || (defined(_MSC_VER) && __CUDA_ARCH__ >= 700)))
+# define _CG_HAS_STL_ATOMICS
 #endif
 
 #ifdef _CG_CPP11_FEATURES
@@ -182,10 +201,12 @@
 # define _CG_ABORT() __trap();
 #endif
 
-#if defined(_CG_CPP11_FEATURES) && !defined(_CG_USE_CUDA_STL)
 _CG_BEGIN_NAMESPACE
 
 namespace details {
+    _CG_STATIC_CONST_DECL unsigned int default_max_block_size = 1024;
+
+#if defined(_CG_CPP11_FEATURES) && !defined(_CG_USE_CUDA_STL)
 namespace templates {
 
 /**
@@ -308,9 +329,10 @@ template<class Ty>
 struct is_same<Ty, Ty> : details::templates::true_type {};
 
 } // templates
+#endif // _CG_CPP11_FEATURES
+
 } // details
 _CG_END_NAMESPACE
 
-#endif // _CG_CPP11_FEATURES
 
 #endif // _CG_INFO_H_

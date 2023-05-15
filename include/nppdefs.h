@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -57,7 +57,11 @@
  */
  
 #ifdef __cplusplus
+#ifdef NPP_PLUS
+using namespace nppPlusV;
+#else
 extern "C" {
+#endif
 #endif
 
 // Workaround for cuda_fp16.h C incompatibility
@@ -358,6 +362,40 @@ typedef struct NPP_ALIGN_16
     Npp64f  re;     /**<  Real part */
     Npp64f  im;     /**<  Imaginary part */
 } Npp64fc;
+
+
+
+/** 
+ * Data types for nppiPlus functions
+ */
+typedef enum
+{
+    NPP_8U,
+    NPP_8S,
+    NPP_16U,
+    NPP_16S,
+    NPP_32U,
+    NPP_32S,
+    NPP_64U,
+    NPP_64S,
+    NPP_16F,
+    NPP_32F,
+    NPP_64F
+} NppDataType;
+
+/** 
+ * Image channel counts for nppiPlus functions
+ */
+typedef enum
+{
+    NPP_CH_1,
+    NPP_CH_2,
+    NPP_CH_3,
+    NPP_CH_4,
+    NPP_CH_A4,
+    NPP_CH_P3,
+    NPP_CH_P4
+} NppiChannels;
 
 /*@}*/
 
@@ -767,8 +805,63 @@ typedef struct
     int nReserved0;
 } NppStreamContext;
 
+/** 
+ * NPP Batch Geometry Structure Definitions. 
+ */
+
+typedef struct
+{
+    const void * pSrc;  /* device memory pointer */
+    int nSrcStep;
+    void * pDst;        /* device memory pointer */
+    int nDstStep;
+} NppiResizeBatchCXR;
+
+/**
+ * Data structure for variable ROI image resizing.
+ * 
+ */
+typedef struct
+{
+    NppiRect oSrcRectROI;    
+    NppiRect oDstRectROI;
+} NppiResizeBatchROI_Advanced; 
+ 
+typedef struct
+{
+    const void * pSrc;  /* device memory pointer, ignored for in place versions */
+    int nSrcStep;
+    void * pDst;        /* device memory pointer */
+    int nDstStep;
+} NppiMirrorBatchCXR;
+
+typedef struct
+{
+    const void * pSrc;  /* device memory pointer */
+    int nSrcStep;
+    void * pDst;        /* device memory pointer */
+    int nDstStep;
+    Npp64f * pCoeffs;   /* device memory pointer to the tranformation matrix with double precision floating-point coefficient values to be used for this image */
+    Npp64f aTransformedCoeffs[2][3]; /* FOR INTERNAL USE, DO NOT INITIALIZE  */
+} NppiWarpAffineBatchCXR;
+
+typedef struct
+{
+    const void * pSrc;  /* device memory pointer */
+    int nSrcStep;
+    void * pDst;        /* device memory pointer */
+    int nDstStep;
+    Npp64f * pCoeffs;   /* device memory pointer to the tranformation matrix with double precision floating-point coefficient values to be used for this image */
+    Npp64f aTransformedCoeffs[3][3]; /* FOR INTERNAL USE, DO NOT INITIALIZE  */
+} NppiWarpPerspectiveBatchCXR;
+
+
+
+
 #ifdef __cplusplus
+#ifndef NPP_PLUS
 } /* extern "C" */
+#endif
 #endif
 
 /*@}*/

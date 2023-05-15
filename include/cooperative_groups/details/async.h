@@ -247,6 +247,9 @@ struct _memcpy_async_align_dispatch {
     _CG_STATIC_QUALIFIER void copy(TyGroup &group, void *__restrict__ dst, const void *__restrict__ src, size_t count) {
         uint32_t alignment = find_best_alignment<AlignHint, 16>(dst, src);
 
+        // Avoid copying the extra bytes if desired copy count is smaller
+        alignment = count < alignment ? AlignHint : alignment;
+
         switch (alignment) {
         default:
         case 1:

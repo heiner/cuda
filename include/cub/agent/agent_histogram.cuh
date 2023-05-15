@@ -103,7 +103,7 @@ template <
     typename    PrivatizedDecodeOpT,            ///< The transform operator type for determining privatized counter indices from samples, one for each channel
     typename    OutputDecodeOpT,                ///< The transform operator type for determining output bin-ids from privatized counter indices, one for each channel
     typename    OffsetT,                        ///< Signed integer type for global offsets
-    int         PTX_ARCH = CUB_PTX_ARCH>        ///< PTX compute capability
+    int         LEGACY_PTX_ARCH = 0>            ///< PTX compute capability (unused)
 struct AgentHistogram
 {
     //---------------------------------------------------------------------
@@ -111,13 +111,13 @@ struct AgentHistogram
     //---------------------------------------------------------------------
 
     /// The sample type of the input iterator
-    typedef typename std::iterator_traits<SampleIteratorT>::value_type SampleT;
+    using SampleT = cub::detail::value_t<SampleIteratorT>;
 
     /// The pixel type of SampleT
-    typedef typename CubVector<SampleT, NUM_CHANNELS>::Type PixelT;
+    using PixelT = typename CubVector<SampleT, NUM_CHANNELS>::Type;
 
     /// The quad type of SampleT
-    typedef typename CubVector<SampleT, 4>::Type QuadT;
+    using QuadT = typename CubVector<SampleT, 4>::Type;
 
     /// Constants
     enum
@@ -145,10 +145,12 @@ struct AgentHistogram
 
 
     /// Input iterator wrapper type (for applying cache modifier)
-    typedef typename If<IsPointer<SampleIteratorT>::VALUE,
-            CacheModifiedInputIterator<LOAD_MODIFIER, SampleT, OffsetT>,     // Wrap the native input pointer with CacheModifiedInputIterator
-            SampleIteratorT>::Type                                           // Directly use the supplied input iterator type
-        WrappedSampleIteratorT;
+    // Wrap the native input pointer with CacheModifiedInputIterator
+    // or directly use the supplied input iterator type
+    using WrappedSampleIteratorT = cub::detail::conditional_t<
+      std::is_pointer<SampleIteratorT>::value,
+      CacheModifiedInputIterator<LOAD_MODIFIER, SampleT, OffsetT>,
+      SampleIteratorT>;
 
     /// Pixel input iterator type (for applying cache modifier)
     typedef CacheModifiedInputIterator<LOAD_MODIFIER, PixelT, OffsetT>
@@ -560,15 +562,10 @@ struct AgentHistogram
             is_valid[PIXEL] = IS_FULL_TILE || (((threadIdx.x * PIXELS_PER_THREAD + PIXEL) * NUM_CHANNELS) < valid_samples);
 
         // Accumulate samples
-#if CUB_PTX_ARCH >= 120
         if (prefer_smem)
             AccumulateSmemPixels(samples, is_valid);
         else
             AccumulateGmemPixels(samples, is_valid);
-#else
-        AccumulateGmemPixels(samples, is_valid);
-#endif
-
     }
 
 

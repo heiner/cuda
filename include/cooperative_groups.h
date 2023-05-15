@@ -55,8 +55,9 @@
 #include "cooperative_groups/details/info.h"
 #include "cooperative_groups/details/driver_abi.h"
 #include "cooperative_groups/details/helpers.h"
+#include "cooperative_groups/details/memory.h"
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_USE_CUDA_STL)
+#if defined(_CG_HAS_STL_ATOMICS)
 #include <cuda/atomic>
 #define _CG_THREAD_SCOPE(scope) _CG_STATIC_CONST_DECL cuda::thread_scope thread_scope = scope;
 #else
@@ -71,9 +72,7 @@ namespace details {
     _CG_CONST_DECL unsigned int grid_group_id = 3;
     _CG_CONST_DECL unsigned int thread_block_id = 4;
     _CG_CONST_DECL unsigned int multi_tile_group_id = 5;
-
-
-
+    _CG_CONST_DECL unsigned int cluster_group_id = 6;
 }
 
 /**
@@ -374,6 +373,24 @@ private:
     _CG_STATIC_QUALIFIER unsigned long long block_rank() {
         return details::grid::block_rank();
     }
+
+# if defined(_CG_HAS_CLUSTER_GROUP)
+    _CG_STATIC_QUALIFIER dim3 dim_clusters() {
+        return details::grid::dim_clusters();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned long long num_clusters() {
+        return details::grid::num_clusters();
+    }
+
+    _CG_STATIC_QUALIFIER dim3 cluster_index() {
+        return details::grid::cluster_index();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned long long cluster_rank() {
+        return details::grid::cluster_rank();
+    }
+# endif
 };
 
 _CG_QUALIFIER grid_group this_grid() {
@@ -386,179 +403,132 @@ _CG_QUALIFIER grid_group this_grid() {
     return gg;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
-namespace details {
-
-    _CG_CONSTEXPR_QUALIFIER unsigned int scratch_sync_memory_size(unsigned int max_block_size) {
-        // One barrier per possible size of the group rounded up to multiple of 4.
-        return 8 * sizeof(details::barrier_t);
+#if defined(_CG_HAS_CLUSTER_GROUP)
+/**
+ * class cluster_group
+ *
+ * Every GPU kernel is executed by a grid of thread blocks. A grid can be evenly
+ * divided along all dimensions to form groups of blocks, each group of which is
+ * a block cluster. Clustered grids are subject to various restrictions and
+ * limitations. Primarily, a cluster consists of at most 8 blocks by default
+ * (although the user is allowed to opt-in to non-standard sizes,) and clustered
+ * grids are subject to additional occupancy limitations due to per-cluster
+ * hardware resource consumption. In exchange, a block cluster is guaranteed to
+ * be a cooperative group, with access to all cooperative group capabilities, as
+ * well as cluster specific capabilities and accelerations. A cluster_group
+ * represents a block cluster.
+ *
+ * Constructed via this_cluster_group();
+ */
+class cluster_group : public thread_group_base<details::cluster_group_id>
+{
+    // Friends
+    friend _CG_QUALIFIER cluster_group this_cluster();
+
+    // Disable constructor
+    _CG_QUALIFIER cluster_group()
+    {
     }
 
-    _CG_CONSTEXPR_QUALIFIER unsigned int scratch_collectives_memory_size(unsigned int communication_size, unsigned int max_block_size) {
-        // One slot of collectives memory per warp.
-        return max_block_size / 32 * communication_size;
+ public:
+    //_CG_THREAD_SCOPE(cuda::thread_scope::thread_scope_cluster)
+
+    using arrival_token = struct {};
+
+    // Functionality exposed by the group
+    _CG_STATIC_QUALIFIER void sync()
+    {
+        return details::cluster::sync();
     }
 
-    _CG_CONSTEXPR_QUALIFIER unsigned int scratch_size_needed(unsigned int communication_size, unsigned int max_block_size) {
-        return scratch_sync_memory_size(max_block_size) + scratch_collectives_memory_size(communication_size, max_block_size);
+    _CG_STATIC_QUALIFIER arrival_token barrier_arrive()
+    {
+        details::cluster::barrier_arrive();
+        return arrival_token();
     }
 
-    _CG_CONSTEXPR_QUALIFIER size_t scratch_alignment(unsigned int communication_size) {
-        return ((communication_size & (communication_size - 1) == 0) && communication_size > 8) ?
-            communication_size : 8;
+    _CG_STATIC_QUALIFIER void barrier_wait()
+    {
+        return details::cluster::barrier_wait();
     }
 
-    _CG_CONST_DECL unsigned int default_tile_communication_size = 8;
-    _CG_CONST_DECL unsigned int default_max_block_size = 1024;
+    _CG_STATIC_QUALIFIER void barrier_wait(arrival_token&&)
+    {
+        return details::cluster::barrier_wait();
+    }
 
-    struct multi_warp_scratch {
-        char memory[1];
-    };
+    _CG_STATIC_QUALIFIER unsigned int query_shared_rank(const void *addr)
+    {
+        return details::cluster::query_shared_rank(addr);
+    }
+
+    template <typename T>
+    _CG_STATIC_QUALIFIER T* map_shared_rank(T *addr, int rank)
+    {
+        return details::cluster::map_shared_rank(addr, rank);
+    }
+
+    _CG_STATIC_QUALIFIER dim3 block_index()
+    {
+        return details::cluster::block_index();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned int block_rank()
+    {
+        return details::cluster::block_rank();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned int thread_rank()
+    {
+        return details::cluster::thread_rank();
+    }
+
+    _CG_STATIC_QUALIFIER dim3 dim_blocks()
+    {
+        return details::cluster::dim_blocks();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned int num_blocks()
+    {
+        return details::cluster::num_blocks();
+    }
+
+    _CG_STATIC_QUALIFIER dim3 dim_threads()
+    {
+        return details::cluster::dim_threads();
+    }
+
+    _CG_STATIC_QUALIFIER unsigned int num_threads()
+    {
+        return details::cluster::num_threads();
+    }
+
+    // Legacy aliases
+    _CG_STATIC_QUALIFIER unsigned int size()
+    {
+        return num_threads();
+    }
+};
+
+/*
+ * cluster_group this_cluster()
+ *
+ * Constructs a cluster_group
+ */
+_CG_QUALIFIER cluster_group this_cluster()
+{
+    cluster_group cg;
+#ifdef _CG_DEBUG
+    cg.sync();
+#endif
+    return cg;
 }
+#endif
 
+#if defined(_CG_CPP11_FEATURES)
 class thread_block;
-namespace experimental {
-    template <unsigned int TileCommunicationSize = details::default_tile_communication_size,
-              unsigned int MaxBlockSize = details::default_max_block_size>
-    struct __align__(details::scratch_alignment(TileCommunicationSize)) block_tile_memory {
-    private:
-        char scratch[details::scratch_size_needed(TileCommunicationSize, MaxBlockSize)];
-
-    public:
-        _CG_QUALIFIER void* get_memory() {
-            return static_cast<void*>(scratch);
-        }
-
-        _CG_STATIC_QUALIFIER unsigned int get_size() {
-            return details::scratch_size_needed(TileCommunicationSize, MaxBlockSize);
-        }
-    };
-
-    template <unsigned int TileCommunicationSize, unsigned int MaxBlockSize>
-    _CG_QUALIFIER thread_block this_thread_block(experimental::block_tile_memory<TileCommunicationSize, MaxBlockSize>& scratch);
-}
+template <unsigned int MaxBlockSize>
+_CG_QUALIFIER thread_block this_thread_block(block_tile_memory<MaxBlockSize>& scratch);
 #endif
 
 /**
@@ -577,34 +547,33 @@ class thread_block : public thread_group_base<details::thread_block_id>
     friend _CG_QUALIFIER thread_group tiled_partition(const thread_group& parent, unsigned int tilesz);
     friend _CG_QUALIFIER thread_group tiled_partition(const thread_block& parent, unsigned int tilesz);
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
-    template <unsigned int TileCommunicationSize, unsigned int MaxBlockSize>
-    friend _CG_QUALIFIER thread_block experimental::this_thread_block(
-            experimental::block_tile_memory<TileCommunicationSize, MaxBlockSize>& scratch);
-
-    const unsigned short communication_size;
-    const unsigned short max_block_size;
-    details::multi_warp_scratch* const tile_memory;
-
+#if defined(_CG_CPP11_FEATURES)
+    template <unsigned int MaxBlockSize>
+    friend _CG_QUALIFIER thread_block this_thread_block(block_tile_memory<MaxBlockSize>& scratch);
     template <unsigned int Size>
     friend class __static_size_multi_warp_tile_base;
 
-    template <unsigned int TileCommunicationSize, unsigned int MaxBlockSize>
-    _CG_QUALIFIER thread_block(experimental::block_tile_memory<TileCommunicationSize, MaxBlockSize>& scratch) :
-        tile_memory(reinterpret_cast<details::multi_warp_scratch*>(&scratch)),
-        communication_size(TileCommunicationSize), max_block_size(MaxBlockSize) {
-        if (thread_rank() < details::scratch_sync_memory_size(MaxBlockSize) / sizeof(details::barrier_t)) {
-            details::barrier_t* barriers = reinterpret_cast<details::barrier_t*>(&tile_memory->memory);
-            barriers[thread_rank()] = 0;
+    details::multi_warp_scratch* const tile_memory;
+
+    template <unsigned int MaxBlockSize>
+    _CG_QUALIFIER thread_block(block_tile_memory<MaxBlockSize>& scratch) :
+        tile_memory(details::get_scratch_ptr(&scratch)) {
+#ifdef _CG_DEBUG
+        if (num_threads() > MaxBlockSize) {
+            details::abort();
         }
+#endif
+#if !defined(_CG_HAS_RESERVED_SHARED)
+        tile_memory->init_barriers(thread_rank());
         sync();
+#endif
     }
 #endif
 
     // Disable constructor
     _CG_QUALIFIER thread_block()
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
-    : tile_memory(NULL), communication_size(0), max_block_size(0)
+#if defined(_CG_CPP11_FEATURES)
+    : tile_memory(details::get_scratch_ptr(NULL))
 #endif
     { }
 
@@ -682,12 +651,10 @@ _CG_QUALIFIER thread_block this_thread_block()
     return (thread_block());
 }
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
-namespace experimental {
-    template <unsigned int TileCommunicationSize, unsigned int MaxBlockSize>
-    _CG_QUALIFIER thread_block this_thread_block(experimental::block_tile_memory<TileCommunicationSize, MaxBlockSize>& scratch) {
-        return (thread_block(scratch));
-    }
+#if defined(_CG_CPP11_FEATURES)
+template <unsigned int MaxBlockSize>
+_CG_QUALIFIER thread_block this_thread_block(block_tile_memory<MaxBlockSize>& scratch) {
+    return (thread_block(scratch));
 }
 #endif
 
@@ -1281,10 +1248,23 @@ namespace details {
     }
 
     template <typename TyVal, typename GroupT, typename WarpLambda, typename InterWarpLambda>
-    TyVal _CG_QUALIFIER multi_warp_collectives_helper(
+    _CG_QUALIFIER TyVal multi_warp_collectives_helper(
             const GroupT& group,
             WarpLambda warp_lambda,
-            InterWarpLambda inter_warp_lambda);
+            InterWarpLambda inter_warp_lambda) {
+                return group.template collectives_scheme<TyVal>(warp_lambda, inter_warp_lambda);
+            }
+
+    template <typename T, typename GroupT>
+    _CG_QUALIFIER T* multi_warp_scratch_location_getter(const GroupT& group, unsigned int warp_id) {
+        return group.template get_scratch_location<T>(warp_id);
+    }
+
+    template <typename GroupT>
+    _CG_QUALIFIER details::barrier_t* multi_warp_sync_location_getter(const GroupT& group) {
+        return group.get_sync_location();
+    }
+
 }
 /**
  * tiled_partition<tilesz>
@@ -1304,52 +1284,56 @@ namespace details {
  * otherwise the results are undefined.
  */
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
+#if defined(_CG_CPP11_FEATURES)
 template <unsigned int Size>
 class __static_size_multi_warp_tile_base : public __static_size_tile_base<Size>
 {
     static_assert(details::_is_valid_multi_warp_tile<Size>::value, "Size must be one of 64/128/256/512");
 
     template <typename TyVal, typename GroupT, typename WarpLambda, typename InterWarpLambda>
-    friend TyVal details::multi_warp_collectives_helper(
+    friend __device__ TyVal details::multi_warp_collectives_helper(
             const GroupT& group,
             WarpLambda warp_lambda,
             InterWarpLambda inter_warp_lambda);
+    template <typename T, typename GroupT>
+    friend __device__ T* details::multi_warp_scratch_location_getter(const GroupT& group, unsigned int warp_id);
+    template <typename GroupT>
+    friend __device__ details::barrier_t* details::multi_warp_sync_location_getter(const GroupT& group);
     template <unsigned int OtherSize>
     friend class __static_size_multi_warp_tile_base;
     using WarpType = details::internal_thread_block_tile<32, __static_size_multi_warp_tile_base<Size>>;
     using ThisType = __static_size_multi_warp_tile_base<Size>;
     _CG_STATIC_CONST_DECL int numWarps = Size / 32;
-    const unsigned short communication_size;
-    const unsigned short max_block_size;
 
 protected:
     details::multi_warp_scratch* const tile_memory;
 
     template <typename GroupT>
-    _CG_QUALIFIER __static_size_multi_warp_tile_base(const GroupT& g) :
-            tile_memory(g.tile_memory), communication_size(g.communication_size), max_block_size(g.max_block_size) {}
+    _CG_QUALIFIER __static_size_multi_warp_tile_base(const GroupT& g) : tile_memory(g.tile_memory) {
+#if defined(_CG_HAS_RESERVED_SHARED)
+        details::sync_warps_reset(get_sync_location(), details::cta::thread_rank());
+        g.sync();
+#endif
+    }
 
 
 private:
     _CG_QUALIFIER details::barrier_t* get_sync_location() const {
         // Different group sizes use different barriers, all groups of a given size share one barrier.
         unsigned int sync_id = details::log2(Size / 64);
-        return &(reinterpret_cast<details::barrier_t*>(tile_memory->memory)[sync_id]);
+        return &tile_memory->barriers[sync_id];
     }
 
     template <typename T>
     _CG_QUALIFIER T* get_scratch_location(unsigned int warp_id) const {
-        unsigned int sync_mem_size = details::scratch_sync_memory_size(max_block_size);
         unsigned int scratch_id = (details::cta::thread_rank() - thread_rank()) / 32 + warp_id;
-        return reinterpret_cast<T*>(&tile_memory->memory[sync_mem_size + scratch_id * communication_size]);
+        return reinterpret_cast<T*>(&tile_memory->communication_memory[scratch_id]);
     }
 
     template <typename T>
     _CG_QUALIFIER T* get_scratch_location() const {
-        unsigned int sync_mem_size = details::scratch_sync_memory_size(max_block_size);
         unsigned int scratch_id = details::cta::thread_rank() / 32;
-        return reinterpret_cast<T*>(&tile_memory->memory[sync_mem_size + scratch_id * communication_size]);
+        return reinterpret_cast<T*>(&tile_memory->communication_memory[scratch_id]);
     }
 
     template <typename TyVal>
@@ -1362,6 +1346,7 @@ private:
         TyVal* warp_scratch_location = get_scratch_location<TyVal>(src_warp);
 
         if (warp.meta_group_rank() == src_warp) {
+            warp.sync();
             // Put shuffled value into my warp slot and let my warp arrive at the barrier.
             if (thread_rank() == src) {
                 *warp_scratch_location = val;
@@ -1373,40 +1358,18 @@ private:
         }
         else {
             // Wait for the source warp to arrive on the barrier.
-            details::sync_warps_wait_for_warps<details::wait_for_specific_warp>(
-                    (details::cta::thread_rank() / 32 - warp.meta_group_rank() + src_warp),
-                    sync_location, details::cta::thread_rank(),
-                    numWarps);
+            details::sync_warps_wait_for_specific_warp(sync_location,
+                    (details::cta::thread_rank() / 32 - warp.meta_group_rank() + src_warp));
             TyVal result = *warp_scratch_location;
             details::sync_warps(sync_location, details::cta::thread_rank(), numWarps);
             return result;
         }
     }
 
-    template <typename TyVal>
-    _CG_QUALIFIER TyVal shfl_iterative_impl(TyVal val, unsigned int src) const {
-        auto warp = details::tiled_partition_internal<32, ThisType>();
-
-        details::copy_channel<numWarps> broadcast_channel{
-            get_scratch_location<char>(0),
-            get_sync_location(),
-            (size_t) communication_size * numWarps};
-
-        if (warp.meta_group_rank() == src / 32) {
-            val = warp.shfl(val, src);
-            broadcast_channel.template send_value<
-                TyVal, 32, decltype(broadcast_channel)::send_many_to_many>(
-                    val, warp.thread_rank(), details::cta::thread_rank() / 32);
-        }
-        else {
-            broadcast_channel.template receive_value<TyVal>(val, warp.thread_rank() == 0);
-        }
-        sync();
-        return val;
-    }
-
     template <typename TyVal, typename WarpLambda, typename InterWarpLambda>
-    _CG_QUALIFIER TyVal collectives_scheme_impl(const WarpLambda& warp_lambda, const InterWarpLambda& inter_warp_lambda) const {
+    _CG_QUALIFIER TyVal collectives_scheme(const WarpLambda& warp_lambda, const InterWarpLambda& inter_warp_lambda) const {
+        static_assert(sizeof(TyVal) <= details::multi_warp_scratch::communication_size,
+                      "Collectives with tiles larger than 32 threads are limited to types smaller then 8 bytes");
         auto warp = details::tiled_partition_internal<32, ThisType>();
         details::barrier_t* sync_location = get_sync_location();
         TyVal* warp_scratch_location = get_scratch_location<TyVal>();
@@ -1423,63 +1386,7 @@ private:
             details::sync_warps_release(sync_location, warp.thread_rank() == 0, details::cta::thread_rank(), numWarps);
         }
         TyVal result = *warp_scratch_location;
-        warp.sync();  // Added warpsync, if all collectives do sync before writing to reduce_location (they does right now),
-                      // we could delete it.
         return result;
-    }
-
-    template <typename TyVal, typename WarpLambda, typename InterWarpLambda>
-    _CG_QUALIFIER TyVal collectives_scheme_iterative_impl(
-            const WarpLambda& warp_lambda,
-            const InterWarpLambda& inter_warp_lambda) const {
-        auto warp = details::tiled_partition_internal<32, ThisType>();
-        details::barrier_t* sync_location = get_sync_location();
-        details::copy_channel<numWarps> final_result_channel{
-            get_scratch_location<char>(0),
-            sync_location,
-            (size_t) communication_size * numWarps};
-
-        TyVal warp_result;
-        warp_lambda(warp, &warp_result);
-
-        if (warp.meta_group_rank() == 0) {
-            auto subwarp = details::tiled_partition_internal<numWarps, decltype(warp)>();
-            details::copy_channel<numWarps> partial_results_channel{
-                get_scratch_location<char>(subwarp.thread_rank()),
-                sync_location,
-                (size_t) communication_size};
-
-            // Thread 0 in subwarp set as inactive to not overwrite warp 0 warp_result.
-            partial_results_channel.template receive_value<TyVal>(
-                    warp_result,
-                    warp.thread_rank() == 0,
-                    subwarp.thread_rank() != 0);
-            inter_warp_lambda(subwarp, &warp_result);
-            final_result_channel.template send_value<TyVal, 32, decltype(final_result_channel)::send_many_to_many>(
-                    warp_result,
-                    warp.thread_rank(),
-                    details::cta::thread_rank() / 32);
-        }
-        else {
-            details::copy_channel<numWarps> partial_results_channel{get_scratch_location<char>(), sync_location, (size_t) communication_size};
-            partial_results_channel.template send_value<TyVal, 32, decltype(partial_results_channel)::send_many_to_one>(
-                    warp_result,
-                    warp.thread_rank(),
-                    (details::cta::thread_rank() - thread_rank()) / 32);
-            final_result_channel.template receive_value<TyVal>(warp_result, warp.thread_rank() == 0);
-        }
-        sync();
-        return warp_result;
-    }
-
-    template <typename TyVal, typename WarpLambda, typename InterWarpLambda>
-    _CG_QUALIFIER TyVal collectives_scheme(const WarpLambda& warp_lambda, const InterWarpLambda& inter_warp_lambda) const {
-        if (sizeof(TyVal) > communication_size) {
-            return collectives_scheme_iterative_impl<TyVal, WarpLambda, InterWarpLambda>(warp_lambda, inter_warp_lambda);
-        }
-        else {
-            return collectives_scheme_impl<TyVal, WarpLambda, InterWarpLambda>(warp_lambda, inter_warp_lambda);
-        }
     }
 
 public:
@@ -1489,12 +1396,9 @@ public:
 
     template <typename TyVal>
     _CG_QUALIFIER TyVal shfl(TyVal val, unsigned int src) const {
-        if (sizeof(TyVal) > communication_size) {
-            return shfl_iterative_impl(val, src);
-        }
-        else {
-            return shfl_impl(val, src);
-        }
+        static_assert(sizeof(TyVal) <= details::multi_warp_scratch::communication_size,
+                      "Collectives with tiles larger than 32 threads are limited to types smaller then 8 bytes");
+        return shfl_impl(val, src);
     }
 
     _CG_QUALIFIER void sync() const {
@@ -1578,7 +1482,7 @@ namespace details {
             __single_warp_thread_block_tile<Size, ParentT>() {}
     };
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
+#if defined(_CG_CPP11_FEATURES)
     template <unsigned int Size, typename ParentT>
     class thread_block_tile_impl<Size, ParentT, true> : public __multi_warp_thread_block_tile<Size, ParentT>
     {
@@ -1589,7 +1493,7 @@ namespace details {
     };
 #else
     template <unsigned int Size, typename ParentT>
-    class thread_block_tile_impl<Size, ParentT, true> 
+    class thread_block_tile_impl<Size, ParentT, true>
     {
         protected:
         template <typename GroupT>
@@ -1631,14 +1535,6 @@ public:
 };
 
 namespace details {
-    template <typename TyVal, typename GroupT, typename WarpLambda, typename InterWarpLambda>
-    TyVal _CG_QUALIFIER multi_warp_collectives_helper(
-            const GroupT& group,
-            WarpLambda warp_lambda,
-            InterWarpLambda inter_warp_lambda) {
-        return group.template collectives_scheme<TyVal>(warp_lambda, inter_warp_lambda);
-    }
-
     template <unsigned int Size, typename ParentT>
     struct tiled_partition_impl;
 
@@ -1661,26 +1557,9 @@ namespace details {
 
 }
 
-namespace experimental {
-    template <unsigned int Size, typename ParentT>
-    _CG_QUALIFIER thread_block_tile<Size, ParentT> tiled_partition(const ParentT& g)
-    {
-#if defined(_CG_CPP11_FEATURES) && !defined(_CG_ABI_EXPERIMENTAL)
-        static_assert(details::_is_single_warp<Size>::value, "_CG_ABI_EXPERIMENTAL needs to be defined"
-                " before cooperative_groups header is included to enable experimental features");
-#endif
-        return details::tiled_partition_impl<Size, ParentT>(g);
-    }
-
-}
-
 template <unsigned int Size, typename ParentT>
 _CG_QUALIFIER thread_block_tile<Size, ParentT> tiled_partition(const ParentT& g)
 {
-#ifdef _CG_CPP11_FEATURES
-    static_assert(details::_is_single_warp<Size>::value, "Tiled partition with Size > 32 is supported only by"
-            " cooperative_groups::experimental::tiled_partition available with experimental features enabled");
-#endif
     return details::tiled_partition_impl<Size, ParentT>(g);
 }
 
@@ -1721,13 +1600,11 @@ _CG_QUALIFIER void thread_group::sync() const
         cooperative_groups::sync(*static_cast<const multi_grid_group*>(this));
         break;
 #endif
-
-
-
-
-
-
-
+#if defined(_CG_HAS_CLUSTER_GROUP)
+    case details::cluster_group_id:
+        cooperative_groups::sync(*static_cast<const cluster_group*>(this));
+        break;
+#endif
     default:
         break;
     }
@@ -1756,13 +1633,11 @@ _CG_QUALIFIER unsigned long long thread_group::size() const
         size = cooperative_groups::group_size(*static_cast<const multi_grid_group*>(this));
         break;
 #endif
-
-
-
-
-
-
-
+#if defined(_CG_HAS_CLUSTER_GROUP)
+    case details::cluster_group_id:
+        size = cooperative_groups::group_size(*static_cast<const cluster_group*>(this));
+        break;
+#endif
     default:
         break;
     }
@@ -1792,13 +1667,11 @@ _CG_QUALIFIER unsigned long long thread_group::thread_rank() const
         rank = cooperative_groups::thread_rank(*static_cast<const multi_grid_group*>(this));
         break;
 #endif
-
-
-
-
-
-
-
+#if defined(_CG_HAS_CLUSTER_GROUP)
+    case details::cluster_group_id:
+        rank = cooperative_groups::thread_rank(*static_cast<const cluster_group*>(this));
+        break;
+#endif
     default:
         break;
     }
@@ -1808,6 +1681,9 @@ _CG_QUALIFIER unsigned long long thread_group::thread_rank() const
 _CG_END_NAMESPACE
 
 #include <cooperative_groups/details/partitioning.h>
+#if (!defined(_MSC_VER) || defined(_WIN64))
+# include <cooperative_groups/details/invoke.h>
+#endif
 
 # endif /* ! (__cplusplus, __CUDACC__) */
 

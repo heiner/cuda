@@ -523,7 +523,7 @@ CUptiResult CUPTIAPI cuptiProfilerPopRange(CUpti_Profiler_PopRange_Params *pPara
 typedef struct CUpti_Profiler_GetCounterAvailability_Params
 {
     size_t structSize;                                  //!< [in] CUpti_Profiler_GetCounterAvailability_Params_STRUCT_SIZE
-    void* pPriv;                                        //!< [in] assign to NULL    
+    void* pPriv;                                        //!< [in] assign to NULL
     CUcontext ctx;                                      //!< [in] if NULL, the current CUcontext is used
     size_t counterAvailabilityImageSize;                //!< [in/out] If `pCounterAvailabilityImage` is NULL, then the required size is returned in
                                                         //!< `counterAvailabilityImageSize`, otherwise `counterAvailabilityImageSize` should be set to the size of
@@ -533,8 +533,8 @@ typedef struct CUpti_Profiler_GetCounterAvailability_Params
 #define CUpti_Profiler_GetCounterAvailability_Params_STRUCT_SIZE                  CUPTI_PROFILER_STRUCT_SIZE(CUpti_Profiler_GetCounterAvailability_Params, pCounterAvailabilityImage)
 
 /**
- * \brief Query counter availibility 
- * 
+ * \brief Query counter availibility
+ *
  * Use this API to query counter availability information in a buffer which can be used to filter unavailable raw metrics on host.
  * Note: This API may fail, if any profiling or sampling session is active on the specified context or its device.
  */
@@ -565,6 +565,7 @@ typedef struct
     CUpti_Profiler_Support_Level vGpu;                //!< [out] SUPPORTED if vGPU is supported and profiling is enabled, DISABLED if profiling is supported but not enabled, UNSUPPORTED otherwise
     CUpti_Profiler_Support_Level confidentialCompute; //!< [out] SUPPORTED if confidential compute is not enabled, UNSUPPORTED otherwise
     CUpti_Profiler_Support_Level cmp;                 //!< [out] SUPPORTED if not NVIDIA Crypto Mining Processors (CMP), UNSUPPORTED otherwise
+    CUpti_Profiler_Support_Level wsl;                 //!< [out] SUPPORTED if WSL supported, UNSUPPORTED otherwise
 } CUpti_Profiler_DeviceSupported_Params;
 #define CUpti_Profiler_DeviceSupported_Params_STRUCT_SIZE CUPTI_PROFILER_STRUCT_SIZE(CUpti_Profiler_DeviceSupported_Params, confidentialCompute)
 

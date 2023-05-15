@@ -53,6 +53,7 @@
 #include "helpers.h"
 #include "cooperative_groups.h"
 #include "partitioning.h"
+#include "functional.h"
 
 _CG_BEGIN_NAMESPACE
 
@@ -134,16 +135,36 @@ _CG_QUALIFIER auto coalesced_inclusive_scan(const coalesced_group& group, TyVal&
     }
 }
 
-template <typename TyGroup, typename TyVal, typename TyOp>
-_CG_QUALIFIER auto coalesced_exclusive_scan(const TyGroup& group, TyVal&& val, TyOp&& op) -> decltype(op(val, val)) {
-    auto ret = coalesced_inclusive_scan(group, _CG_STL_NAMESPACE::forward<TyVal>(val), _CG_STL_NAMESPACE::forward<TyOp>(op));
-    ret = group.shfl_up(ret, 1);
-    if (group.thread_rank() == 0) {
-        return {};
+template <bool IntegralOptimized>
+struct scan_choose_convertion;
+
+template<>
+struct scan_choose_convertion<true> {
+    template <typename TyGroup, typename TyRes, typename TyVal>
+    _CG_STATIC_QUALIFIER details::remove_qual<TyVal> convert_inclusive_to_exclusive(const TyGroup& group, TyRes& result, TyVal&& val) {
+        return result - val;
     }
-    else {
-        return ret;
+};
+
+template<>
+struct scan_choose_convertion<false> {
+    template <typename TyGroup, typename TyRes, typename TyVal>
+    _CG_STATIC_QUALIFIER details::remove_qual<TyVal> convert_inclusive_to_exclusive(const TyGroup& group, TyRes& result, TyVal&& val) {
+        auto ret = group.shfl_up(result, 1);
+        if (group.thread_rank() == 0) {
+            return {};
+        }
+        else {
+            return ret;
+        }
     }
+};
+
+template <typename TyGroup, typename TyRes, typename TyVal, typename TyFn>
+_CG_QUALIFIER auto convert_inclusive_to_exclusive(const TyGroup& group, TyRes& result, TyVal&& val, TyFn&& op) -> decltype(op(val, val)) {
+    using conversion = scan_choose_convertion<_CG_STL_NAMESPACE::is_same<remove_qual<TyFn>, cooperative_groups::plus<remove_qual<TyVal>>>::value
+                                 && _CG_STL_NAMESPACE::is_integral<remove_qual<TyVal>>::value>;
+    return conversion::convert_inclusive_to_exclusive(group, result, _CG_STL_NAMESPACE::forward<TyVal>(val));
 }
 
 } // details

@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -60,7 +60,11 @@
 #include "nppdefs.h"
 
 #ifdef __cplusplus
+#ifdef NPP_PLUS
+using namespace nppPlusV;
+#else
 extern "C" {
+#endif
 #endif
  
 /** \defgroup core_npp NPP Core
@@ -180,7 +184,9 @@ nppSetStream(cudaStream_t hStream);
 
 
 #ifdef __cplusplus
+#ifndef NPP_PLUS
 } /* extern "C" */
+#endif
 #endif
 
 #endif /* NV_NPPCORE_H */

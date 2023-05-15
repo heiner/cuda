@@ -127,16 +127,10 @@ namespace details {
 
     class _coalesced_group_data_access {
     public:
-        // Retrieve mask of coalesced groups
+        // Retrieve mask of coalesced groups and tiles
         template <typename TyGroup>
         _CG_STATIC_QUALIFIER unsigned int get_mask(const TyGroup &group) {
             return group.get_mask();
-        }
-
-        // Retrieve mask of tiles
-        template <template <typename, typename> typename TyGroup, typename Sz, typename Parent>
-        _CG_STATIC_QUALIFIER unsigned int get_mask(const TyGroup<Sz, Parent> &group) {
-            return group.build_maks();
         }
 
         template <typename TyGroup>
@@ -209,7 +203,7 @@ namespace details {
         struct _memory_shuffle {
             template <typename TyElem, typename TyShflFn>
             _CG_STATIC_QUALIFIER TyElem _shfl_internal(TyElem elem, const TyShflFn& fn) {
-                static_assert(sizeof(TyElem) > 0, "in memory shuffle is not yet implemented");
+                static_assert(sizeof(TyElem) <= 32, "Cooperative groups collectives are limited to types smaller than 32B");
                 return TyElem{};
             }
 
@@ -413,6 +407,25 @@ namespace details {
             return dim3(blockIdx.x, blockIdx.y, blockIdx.z);
         }
 
+#if defined(_CG_HAS_CLUSTER_GROUP)
+        _CG_STATIC_QUALIFIER dim3 dim_clusters() {
+            return __clusterGridDimInClusters();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned long long num_clusters() {
+            const dim3 dimClusters = dim_clusters();
+            return dimClusters.x * dimClusters.y * dimClusters.z;
+        }
+
+        _CG_STATIC_QUALIFIER dim3 cluster_index() {
+            return __clusterIdx();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned long long cluster_rank() {
+            return vec3_to_linear<unsigned long long>(cluster_index(), dim_clusters());
+        }
+#endif
+
         // Legacy aliases
         _CG_STATIC_QUALIFIER unsigned long long size()
         {
@@ -494,112 +507,82 @@ namespace details {
     };
 #endif
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#if defined(_CG_HAS_CLUSTER_GROUP)
+    namespace cluster {
+
+        _CG_STATIC_QUALIFIER bool isReal()
+        {
+            return __clusterDimIsSpecified();
+        }
+
+        _CG_STATIC_QUALIFIER void barrier_arrive()
+        {
+            __cluster_barrier_arrive();
+        }
+
+        _CG_STATIC_QUALIFIER void barrier_wait()
+        {
+            __cluster_barrier_wait();
+        }
+
+        _CG_STATIC_QUALIFIER void sync()
+        {
+            barrier_arrive();
+            barrier_wait();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned int query_shared_rank(const void *addr)
+        {
+            return __cluster_query_shared_rank(addr);
+        }
+
+        template <typename T>
+        _CG_STATIC_QUALIFIER T* map_shared_rank(T *addr, int rank)
+        {
+            return static_cast<T*>(__cluster_map_shared_rank(addr, rank));
+        }
+
+        _CG_STATIC_QUALIFIER dim3 block_index()
+        {
+            return __clusterRelativeBlockIdx();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned int block_rank()
+        {
+            return __clusterRelativeBlockRank();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned int thread_rank()
+        {
+            return block_rank() * cta::num_threads() + cta::thread_rank();
+        }
+
+        _CG_STATIC_QUALIFIER dim3 dim_blocks()
+        {
+            return __clusterDim();
+        }
+
+        _CG_STATIC_QUALIFIER unsigned int num_blocks()
+        {
+            return __clusterSizeInBlocks();
+        }
+
+        _CG_STATIC_QUALIFIER dim3 dim_threads()
+        {
+            const dim3 dimBlocks = dim_blocks();
+            const unsigned int x = dimBlocks.x * blockDim.x;
+            const unsigned int y = dimBlocks.y * blockDim.y;
+            const unsigned int z = dimBlocks.z * blockDim.z;
+            return dim3(x, y, z);
+        }
+
+        _CG_STATIC_QUALIFIER unsigned int num_threads()
+        {
+            return num_blocks() * cta::num_threads();
+        }
+
+    };
+#endif
 
     _CG_STATIC_QUALIFIER unsigned int laneid()
     {
@@ -635,77 +618,10 @@ namespace details {
             details::is_float_or_half<Ty>::value,
             "Error: Ty is neither integer or float"
         );
-#endif
+#endif //_CG_CPP11_FEATURES
     }
 
-#if defined(_CG_CPP11_FEATURES) && defined(_CG_ABI_EXPERIMENTAL)
-    template <unsigned int numWarps>
-    struct copy_channel {
-        char* channel_ptr;
-        barrier_t* sync_location;
-        size_t channel_size;
-
-        // One warp sending to all other warps, it has to wait for all other warps.
-        struct send_many_to_many {
-            _CG_STATIC_CONST_DECL wait_for_warps_kind wait_kind = wait_for_all_other_warps;
-            _CG_STATIC_QUALIFIER void post_iter_release(unsigned int thread_idx, barrier_t* sync_location) {
-                __syncwarp(0xFFFFFFFF);
-                details::sync_warps_release(sync_location, thread_idx == 0, cta::thread_rank(), numWarps);
-            }
-        };
-
-        // One warp is receiving and all other warps are sending to that warp, they have to wait for that one warp.
-        struct send_many_to_one {
-            _CG_STATIC_CONST_DECL wait_for_warps_kind wait_kind = wait_for_specific_warp;
-            _CG_STATIC_QUALIFIER void post_iter_release(unsigned int thread_idx, barrier_t* sync_location) {
-                // Wait for all warps to finish and let the last warp release all threads.
-                if (details::sync_warps_last_releases(sync_location, cta::thread_rank(), numWarps)) {
-                    details::sync_warps_release(sync_location, thread_idx == 0, cta::thread_rank(), numWarps);
-                }
-            }
-        };
-
-        template <unsigned int ThreadCnt, size_t ValSize, typename SendDetails>
-        _CG_QUALIFIER void _send_value_internal(char* val_ptr, unsigned int thread_idx, unsigned int warp_id) {
-            size_t thread_offset = thread_idx * sizeof(int);
-
-            for (size_t i = 0; i < ValSize; i += channel_size) {
-                size_t bytes_left = ValSize - i;
-                size_t copy_chunk = min(bytes_left, channel_size);
-
-                details::sync_warps_wait_for_warps<SendDetails::wait_kind>(warp_id, sync_location, cta::thread_rank(), numWarps);
-                #pragma unroll 1
-                for (size_t j = thread_offset; j < copy_chunk ; j += sizeof(int) * ThreadCnt) {
-                    size_t my_bytes_left = copy_chunk - j;
-                    memcpy(channel_ptr + j, val_ptr + i + j, min(my_bytes_left, sizeof(int)));
-                }
-                SendDetails::post_iter_release(thread_idx, sync_location);
-            }
-        }
-
-
-        template <typename TyVal, unsigned int ThreadCnt, typename SendDetails>
-        _CG_QUALIFIER void send_value(TyVal& val, unsigned int thread_idx, unsigned int warp_id) {
-            _send_value_internal<ThreadCnt, sizeof(TyVal), SendDetails>(reinterpret_cast<char*>(&val), thread_idx, warp_id);
-        }
-
-        template <size_t ValSize>
-        _CG_QUALIFIER void _receive_value_internal(char* val_ptr, bool warp_master, bool active) {
-            for (size_t i = 0; i < ValSize; i += channel_size) {
-                size_t bytes_left = ValSize - i;
-                details::sync_warps_wait_for_release(sync_location, warp_master, cta::thread_rank(), numWarps);
-                if (active) {
-                    memcpy(val_ptr + i, channel_ptr, min(bytes_left, channel_size));
-                }
-            }
-        }
-
-        template <typename TyVal>
-        _CG_QUALIFIER void receive_value(TyVal& val, bool warp_master, bool active = true) {
-            _receive_value_internal<sizeof(TyVal)>(reinterpret_cast<char*>(&val), warp_master, active);
-        }
-    };
-
+#ifdef _CG_CPP11_FEATURES
     _CG_STATIC_QUALIFIER constexpr unsigned int log2(unsigned int x) {
         return x == 1 ? 0 : 1 + log2(x / 2);
     }

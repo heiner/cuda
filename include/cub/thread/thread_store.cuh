@@ -33,9 +33,9 @@
 
 #pragma once
 
-#include "../config.cuh"
-#include "../util_ptx.cuh"
-#include "../util_type.cuh"
+#include <cub/config.cuh>
+#include <cub/util_ptx.cuh>
+#include <cub/util_type.cuh>
 
 CUB_NAMESPACE_BEGIN
 
@@ -257,18 +257,10 @@ struct IterateThreadStore<MAX, MAX>
 /**
  * Define ThreadStore specializations for the various Cache load modifiers
  */
-#if CUB_PTX_ARCH >= 200
-    _CUB_STORE_ALL(STORE_WB, wb)
-    _CUB_STORE_ALL(STORE_CG, cg)
-    _CUB_STORE_ALL(STORE_CS, cs)
-    _CUB_STORE_ALL(STORE_WT, wt)
-#else
-    _CUB_STORE_ALL(STORE_WB, global)
-    _CUB_STORE_ALL(STORE_CG, global)
-    _CUB_STORE_ALL(STORE_CS, global)
-    _CUB_STORE_ALL(STORE_WT, volatile.global)
-#endif
-
+_CUB_STORE_ALL(STORE_WB, wb)
+_CUB_STORE_ALL(STORE_CG, cg)
+_CUB_STORE_ALL(STORE_CS, cs)
+_CUB_STORE_ALL(STORE_WT, wt)
 
 // Macro cleanup
 #undef _CUB_STORE_ALL
@@ -401,7 +393,7 @@ __device__ __forceinline__ void ThreadStore(OutputIteratorT itr, T val)
         itr,
         val,
         Int2Type<MODIFIER>(),
-        Int2Type<IsPointer<OutputIteratorT>::VALUE>());
+        Int2Type<std::is_pointer<OutputIteratorT>::value>());
 }
 
 

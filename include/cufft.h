@@ -73,17 +73,12 @@
 extern "C" {
 #endif
 
-#define CUFFT_VER_MAJOR 10
-#define CUFFT_VER_MINOR 7
-#define CUFFT_VER_PATCH 1
-#define CUFFT_VER_BUILD 112
+#define CUFFT_VER_MAJOR 11
+#define CUFFT_VER_MINOR 0
+#define CUFFT_VER_PATCH 2
+#define CUFFT_VER_BUILD 4
 
-// cuFFT library version
-//
-// CUFFT_VERSION / 1000 - major version
-// CUFFT_VERSION / 100 % 100 - minor version
-// CUFFT_VERSION % 100 - patch level
-#define CUFFT_VERSION 10701
+#define CUFFT_VERSION 11002
 
 // CUFFT API function return values
 typedef enum cufftResult_t {

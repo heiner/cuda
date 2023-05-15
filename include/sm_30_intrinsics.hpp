@@ -58,7 +58,7 @@
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
 
 /*******************************************************************************
 *                                                                              *
@@ -142,7 +142,7 @@ unsigned __activemask() {
 }
 
 // These are removed starting with compute_70 and onwards
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
 
 __SM_30_INTRINSICS_DECL__ int __shfl(int var, int srcLane, int width) {
 	int ret;
@@ -358,7 +358,7 @@ __SM_30_INTRINSICS_DECL__ unsigned long __shfl_xor(unsigned long var, int laneMa
 		__shfl_xor((unsigned int) var, laneMask, width);
 }
 
-#endif /* !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700 */
+#endif /* defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700 */
 
 // Warp register exchange (shuffle) intrinsics.
 // Notes:
@@ -594,7 +594,7 @@ __SM_30_INTRINSICS_DECL__ unsigned long __shfl_xor_sync(unsigned mask, unsigned 
 #undef __local_warpSize
 #endif
 
-#endif /* !__CUDA_ARCH__ || __CUDA_ARCH__ >= 300 */
+#endif /* _NVHPC_CUDA || !__CUDA_ARCH__ || __CUDA_ARCH__ >= 300 */
 
 #endif /* __cplusplus && __CUDACC__ */
 

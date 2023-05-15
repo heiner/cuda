@@ -1,5 +1,5 @@
 /*
- * Copyright 1993-2021 NVIDIA Corporation.  All rights reserved.
+ * Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -71,9 +71,11 @@
 #if defined(__CUDACC_RTC__)
 #define __DEVICE_FUNCTIONS_DECL__ __device__ __cudart_builtin__
 #define __DEVICE_FUNCTIONS_STATIC_DECL__ __device__ __cudart_builtin__
+#define __DEVICE_HOST_FUNCTIONS_STATIC_DECL__ __device__ __host__ __cudart_builtin__
 #else
 #define __DEVICE_FUNCTIONS_DECL__ __device__ __cudart_builtin__
 #define __DEVICE_FUNCTIONS_STATIC_DECL__ static __inline__ __device__ __cudart_builtin__
+#define __DEVICE_HOST_FUNCTIONS_STATIC_DECL__ static __inline__ __device__ __host__ __cudart_builtin__
 #endif /* __CUDACC_RTC__ */
 
 #include "builtin_types.h"
@@ -2176,24 +2178,23 @@ __DEVICE_FUNCTIONS_DECL__ __device_builtin__ unsigned long long int __brevll(uns
  * \ingroup CUDA_MATH_INTRINSIC_INT
  * \brief Return selected bytes from two 32-bit unsigned integers.
  *
- * byte_perm(x,y,s) returns a 32-bit integer consisting of four bytes from eight input bytes provided in the two 
+ * \return Returns a 32-bit integer consisting of four bytes from eight input bytes provided in the two
  * input integers \p x and \p y, as specified by a selector, \p s.
  *
- * The input bytes are indexed as follows:
- * <pre>
- * input[0] = x<7:0>   input[1] = x<15:8>
- * input[2] = x<23:16> input[3] = x<31:24>
- * input[4] = y<7:0>   input[5] = y<15:8>
- * input[6] = y<23:16> input[7] = y<31:24>
- * </pre>
- * The selector indices are as follows (the upper 16-bits of the selector are not used):
- * <pre>
- * selector[0] = s<2:0>  selector[1] = s<6:4>
- * selector[2] = s<10:8> selector[3] = s<14:12>
- * </pre>
- * \return The returned value r is computed to be:
- * <tt>result[n] := input[selector[n]]</tt>
- * where <tt>result[n]</tt> is the nth byte of r.
+ * Create 8-byte source
+ * - uint64_t \p tmp64 = ((uint64_t)\p y << 32) | \p x;
+ *
+ * Extract selector bits
+ * - \p selector0 = (\p s >>  0) & 0x7;
+ * - \p selector1 = (\p s >>  4) & 0x7;
+ * - \p selector2 = (\p s >>  8) & 0x7;
+ * - \p selector3 = (\p s >> 12) & 0x7;
+ *
+ * Return 4 selected bytes from 8-byte source:
+ * - \p res[07:00] = \p tmp64[\p selector0];
+ * - \p res[15:08] = \p tmp64[\p selector1];
+ * - \p res[23:16] = \p tmp64[\p selector2];
+ * - \p res[31:24] = \p tmp64[\p selector3];
  */
 __DEVICE_FUNCTIONS_DECL__ __device_builtin__ unsigned int           __byte_perm(unsigned int x, unsigned int y, unsigned int s);
 /**
@@ -3199,79 +3200,405 @@ __DEVICE_FUNCTIONS_DECL__ __device_builtin__ unsigned int __vabsdiffs4(unsigned 
  */
 __DEVICE_FUNCTIONS_DECL__ __device_builtin__ unsigned int __vsads4(unsigned int a, unsigned int b);
 
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(max(a, b), 0)
+ *
+ * Calculates the maximum of \p a and \p b of two signed ints, if this is less than \p 0 then \p 0 is returned.
+ * \return Returns computed value.
+ */
+
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__ int __vimax_s32_relu(const int a, const int b);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(max(a, b), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a max with relu ( = max(a_part, b_part, 0) ). Partial results
+ * are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimax_s16x2_relu(const unsigned int a, const unsigned int b);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(min(a, b), 0)
+ *
+ * Calculates the minimum of \p a and \p b of two signed ints, if this is less than \p 0 then \p 0 is returned.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vimin_s32_relu(const int a, const int b);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(min(a, b), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a min with relu ( = max(min(a_part, b_part), 0) ). Partial results
+ * are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimin_s16x2_relu(const unsigned int a, const unsigned int b);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(max(a, b), c)
+ * 
+ * Calculates the 3-way max of signed integers \p a, \p b and \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vimax3_s32(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(max(a, b), c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a 3-way max ( = max(max(a_part, b_part), c_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimax3_s16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(max(a, b), c)
+ * 
+ * Calculates the 3-way max of unsigned integers \p a, \p b and \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimax3_u32(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(max(a, b), c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs a 3-way max ( = max(max(a_part, b_part), c_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimax3_u16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(min(a, b), c)
+ * 
+ * Calculates the 3-way min of signed integers \p a, \p b and \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vimin3_s32(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(min(a, b), c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a 3-way min ( = min(min(a_part, b_part), c_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimin3_s16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(min(a, b), c)
+ * 
+ * Calculates the 3-way min of unsigned integers \p a, \p b and \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimin3_u32(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(min(a, b), c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs a 3-way min ( = min(min(a_part, b_part), c_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimin3_u16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(max(max(a, b), c), 0)
+ *
+ * Calculates the maximum of three signed ints, if this is less than \p 0 then \p 0 is returned.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vimax3_s32_relu(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(max(max(a, b), c), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a three-way max with relu ( = max(a_part, b_part, c_part, 0) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimax3_s16x2_relu(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(min(min(a, b), c), 0)
+ *
+ * Calculates the minimum of three signed ints, if this is less than \p 0 then \p 0 is returned.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vimin3_s32_relu(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(min(min(a, b), c), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a three-way min with relu ( = max(min(a_part, b_part, c_part), 0) ).
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vimin3_s16x2_relu(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(a + b, c)
+ *
+ * Calculates the sum of signed integers \p a and \p b and takes the max with \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __viaddmax_s32(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(a + b, c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs an add and compare: max(a_part + b_part), c_part)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmax_s16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(a + b, c)
+ *
+ * Calculates the sum of unsigned integers \p a and \p b and takes the max with \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmax_u32(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(a + b, c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs an add and compare: max(a_part + b_part), c_part)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmax_u16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(a + b, c)
+ *
+ * Calculates the sum of signed integers \p a and \p b and takes the min with \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __viaddmin_s32(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(a + b, c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs an add and compare: min(a_part + b_part), c_part)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmin_s16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(a + b, c)
+ *
+ * Calculates the sum of unsigned integers \p a and \p b and takes the min with \p c.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmin_u32(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(a + b, c)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs an add and compare: min(a_part + b_part), c_part)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmin_u16x2(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(max(a + b, c), 0)
+ *
+ * Calculates the sum of signed integers \p a and \p b and takes the max with \p c.
+ * If the result is less than \p 0 then \0 is returned.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __viaddmax_s32_relu(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(max(a + b, c), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs an add, followed by a max with relu: max(max(a_part + b_part), c_part), 0)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmax_s16x2_relu(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(min(a + b, c), 0)
+ *
+ * Calculates the sum of signed integers \p a and \p b and takes the min with \p c.
+ * If the result is less than \p 0 then \0 is returned.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __viaddmin_s32_relu(const int a, const int b, const int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(min(a + b, c), 0)
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs an add, followed by a min with relu: max(min(a_part + b_part), c_part), 0)
+ * Partial results are recombined and returned as unsigned int.
+ * \return Returns computed value.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __viaddmin_s16x2_relu(const unsigned int a, const unsigned int b, const unsigned int c);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(a, b), also sets the value pointed to by pred to (a >= b).
+ *
+ * Calculates the maximum of \p a and \p b of two signed ints. Also sets the value pointed to by \p pred to the value (a >= b).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vibmax_s32(const int a, const int b, bool* const pred);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes max(a, b), also sets the value pointed to by pred to (a >= b).
+ *
+ * Calculates the maximum of \p a and \p b of two unsigned ints. Also sets the value pointed to by \p pred to the value (a >= b).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmax_u32(const unsigned int a, const unsigned int b, bool* const pred);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(a, b), also sets the value pointed to by pred to (a <= b).
+ *
+ * Calculates the minimum of \p a and \p b of two signed ints. Also sets the value pointed to by \p pred to the value (a <= b).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  int __vibmin_s32(const int a, const int b, bool* const pred);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Computes min(a, b), also sets the value pointed to by pred to (a <= b).
+ *
+ * Calculates the minimum of \p a and \p b of two unsigned ints. Also sets the value pointed to by \p pred to the value (a <= b).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmin_u32(const unsigned int a, const unsigned int b, bool* const pred);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(a, b), also sets the value pointed to by pred_hi and pred_lo to the per-halfword result of (a >= b).
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a maximum ( = max(a_part, b_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * Sets the value pointed to by \p pred_hi to the value (a_high_part >= b_high_part).
+ * Sets the value pointed to by \p pred_lo to the value (a_low_part >= b_low_part).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmax_s16x2(const unsigned int a, const unsigned int b, bool* const pred_hi, bool* const pred_lo);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword max(a, b), also sets the value pointed to by pred_hi and pred_lo to the per-halfword result of (a >= b).
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs a maximum ( = max(a_part, b_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * Sets the value pointed to by \p pred_hi to the value (a_high_part >= b_high_part).
+ * Sets the value pointed to by \p pred_lo to the value (a_low_part >= b_low_part).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmax_u16x2(const unsigned int a, const unsigned int b, bool* const pred_hi, bool* const pred_lo);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(a, b), also sets the value pointed to by pred_hi and pred_lo to the per-halfword result of (a <= b).
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as signed shorts.
+ * For corresponding parts function performs a maximum ( = max(a_part, b_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * Sets the value pointed to by \p pred_hi to the value (a_high_part <= b_high_part).
+ * Sets the value pointed to by \p pred_lo to the value (a_low_part <= b_low_part).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmin_s16x2(const unsigned int a, const unsigned int b, bool* const pred_hi, bool* const pred_lo);
+
+/**
+ * \ingroup CUDA_MATH_INTRINSIC_SIMD
+ * \brief Performs per-halfword min(a, b), also sets the value pointed to by pred_hi and pred_lo to the per-halfword result of (a <= b).
+ * 
+ * Splits 4 bytes of each argument into 2 parts, each consisting of 2 bytes.
+ * These 2 byte parts are interpreted as unsigned shorts.
+ * For corresponding parts function performs a maximum ( = max(a_part, b_part) ).
+ * Partial results are recombined and returned as unsigned int.
+ * Sets the value pointed to by \p pred_hi to the value (a_high_part <= b_high_part).
+ * Sets the value pointed to by \p pred_lo to the value (a_low_part <= b_low_part).
+ * \return Returns computed values.
+ */
+__DEVICE_HOST_FUNCTIONS_STATIC_DECL__  unsigned int __vibmin_u16x2(const unsigned int a, const unsigned int b, bool* const pred_hi, bool* const pred_lo);
+
 /*******************************************************************************
  *                                                                             *
  *                            END SIMD functions                               *
  *                                                                             *
  *******************************************************************************/
-}
-
-/*******************************************************************************
-*                                                                              *
-*                                                                              *
-*                                                                              *
-*******************************************************************************/
-
-#if defined(_WIN32)
-# define __DEVICE_FUNCTIONS_DEPRECATED__(msg) __declspec(deprecated(msg))
-#elif (defined(__GNUC__) && (__GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 5 && !defined(__clang__))))
-# define __DEVICE_FUNCTIONS_DEPRECATED__(msg) __attribute__((deprecated))
-#else
-# define __DEVICE_FUNCTIONS_DEPRECATED__(msg) __attribute__((deprecated(msg)))
-#endif
-
-#define ___DEVICE_FUNCTIONS_STRINGIFY_INNERMOST(x) #x
-#define __DEVICE_FUNCTIONS_STRINGIFY(x) ___DEVICE_FUNCTIONS_STRINGIFY_INNERMOST(x)
-
-#define __DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(x) __DEVICE_FUNCTIONS_STRINGIFY(x) "() is deprecated in favor of __" __DEVICE_FUNCTIONS_STRINGIFY(x) "() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
-#define __DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(x,y) __DEVICE_FUNCTIONS_STRINGIFY(x) "() is deprecated in favor of __" __DEVICE_FUNCTIONS_STRINGIFY(x) __DEVICE_FUNCTIONS_STRINGIFY(y) "() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mulhi)) int mulhi(const int a, const int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mulhi)) unsigned int mulhi(const unsigned int a, const unsigned int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mulhi)) unsigned int mulhi(const int a, const unsigned int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mulhi)) unsigned int mulhi(const unsigned int a, const int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mul64hi)) long long int mul64hi(const long long int a, const long long int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mul64hi)) unsigned long long int mul64hi(const unsigned long long int a, const unsigned long long int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mul64hi)) unsigned long long int mul64hi(const long long int a, const unsigned long long int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mul64hi)) unsigned long long int mul64hi(const unsigned long long int a, const long long int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(float_as_int)) int float_as_int(const float a);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(int_as_float)) float int_as_float(const int a);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(float_as_uint)) unsigned int float_as_uint(const float a);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(uint_as_float)) float uint_as_float(const unsigned int a);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(saturate,f)) float saturate(const float a);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(mul24)) int mul24(const int a, const int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1(umul24)) unsigned int umul24(const unsigned int a, const unsigned int b);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(float2int,_ru|_rd|_rn|_rz)) int float2int(const float a, const enum cudaRoundMode mode = cudaRoundZero);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(float2uint,_ru|_rd|_rn|_rz)) unsigned int float2uint(const float a, const enum cudaRoundMode mode = cudaRoundZero);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(int2float,_ru|_rd|_rn|_rz)) float int2float(const int a, const enum cudaRoundMode mode = cudaRoundNearest);
-
-__DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2(uint2float,_ru|_rd|_rn|_rz)) float uint2float(const unsigned int a, const enum cudaRoundMode mode = cudaRoundNearest);
-#undef __DEVICE_FUNCTIONS_DEPRECATED__
-#undef ___DEVICE_FUNCTIONS_STRINGIFY_INNERMOST
-#undef __DEVICE_FUNCTIONS_STRINGIFY
-#undef __DEVICE_FUNCTIONS_DEPRECATION_MESSAGE1
-#undef __DEVICE_FUNCTIONS_DEPRECATION_MESSAGE2
-
+} //extern "c"
 
 #undef __DEVICE_FUNCTIONS_DECL__
 #undef __DEVICE_FUNCTIONS_STATIC_DECL__
+#undef __DEVICE_HOST_FUNCTIONS_STATIC_DECL__
 
 #endif /* __cplusplus && __CUDACC__ */
 
@@ -3298,10 +3625,10 @@ __DEVICE_FUNCTIONS_STATIC_DECL__ __DEVICE_FUNCTIONS_DEPRECATED__(__DEVICE_FUNCTI
 #include "sm_61_intrinsics.h"
 #include "sm_70_rt.h"
 #include "sm_80_rt.h"
-#include "surface_functions.h"
-#include "texture_fetch_functions.h"
+#include "sm_90_rt.h"
 #include "texture_indirect_functions.h"
 #include "surface_indirect_functions.h"
+#include "cudacc_ext.h"
 
 #ifdef __CUDACC__
 extern "C" __host__ __device__  unsigned CUDARTAPI __cudaPushCallConfiguration(dim3 gridDim,

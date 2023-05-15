@@ -68,77 +68,6 @@ extern "C" {
 
 /**
  * \ingroup CUDART
- * \defgroup CUDART_PROFILER_DEPRECATED Profiler Control [DEPRECATED]
- *
- * ___MANBRIEF___ profiler control functions of the CUDA runtime API
- * (___CURRENT_FILE___) ___ENDMANBRIEF___
- *
- * This section describes the profiler control functions of the CUDA runtime
- * application programming interface.
- *
- * @{
- */
-
-/**
- * \brief Initialize the CUDA profiler.
- *
- * \deprecated
- *	
- * Using this API user can initialize the CUDA profiler by specifying
- * the configuration file, output file and output file format. This
- * API is generally used to profile different set of counters by
- * looping the kernel launch. The \p configFile parameter can be used
- * to select profiling options including profiler counters. Refer to
- * the "Compute Command Line Profiler User Guide" for supported
- * profiler options and counters.
- *
- * Limitation: The CUDA profiler cannot be initialized with this API
- * if another profiling tool is already active, as indicated by the
- * ::cudaErrorProfilerDisabled return code.
- *
- * Typical usage of the profiling APIs is as follows: 
- *
- * for each set of counters/options\n
- * {\n
- *      cudaProfilerInitialize(); //Initialize profiling,set the counters/options in 
- * the config file \n
- *      ...\n
- *      cudaProfilerStart(); \n
- *      // code to be profiled \n
- *      cudaProfilerStop();\n
- *      ...\n
- *      cudaProfilerStart(); \n
- *      // code to be profiled \n
- *      cudaProfilerStop();\n
- *      ...\n
- * }\n
- *
- *
- * \param configFile - Name of the config file that lists the counters/options
- * for profiling.
- * \param outputFile - Name of the outputFile where the profiling results will
- * be stored.
- * \param outputMode - outputMode, can be ::cudaKeyValuePair OR ::cudaCSV.
- *
- * \return
- * ::cudaSuccess,
- * ::cudaErrorInvalidValue,
- * ::cudaErrorProfilerDisabled
- * \notefnerr
- *
- * \sa
- * ::cudaProfilerStart,
- * ::cudaProfilerStop,
- * ::cuProfilerInitialize
- */
-extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaProfilerInitialize(const char *configFile, 
-                                                             const char *outputFile, 
-                                                             cudaOutputMode_t outputMode);
-
-/** @} */ /* END CUDART_PROFILER_DEPRECATED */
-
-/**
- * \ingroup CUDART
  * \defgroup CUDART_PROFILER Profiler Control
  *
  * ___MANBRIEF___ profiler control functions of the CUDA runtime API
@@ -167,7 +96,6 @@ extern __CUDA_DEPRECATED __host__ cudaError_t CUDARTAPI cudaProfilerInitialize(c
  * \notefnerr
  *
  * \sa
- * ::cudaProfilerInitialize,
  * ::cudaProfilerStop,
  * ::cuProfilerStart
  */
@@ -189,7 +117,6 @@ extern __host__ cudaError_t CUDARTAPI cudaProfilerStart(void);
  * \notefnerr
  *
  * \sa
- * ::cudaProfilerInitialize,
  * ::cudaProfilerStart,
  * ::cuProfilerStop
  */

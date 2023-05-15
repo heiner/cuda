@@ -1,5 +1,5 @@
 /******************************************************************************
- * Copyright (c) 2011-2020, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2011-2022, NVIDIA CORPORATION.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -25,7 +25,7 @@
  *
  ******************************************************************************/
 
-/*! \file version.h
+/*! \file version.cuh
  *  \brief Compile-time macros encoding CUB release version
  *
  *         <cub/version.h> is the only CUB header that is guaranteed to
@@ -43,7 +43,7 @@
  *         <tt>CUB_VERSION / 100 % 1000</tt> is the minor version.
  *         <tt>CUB_VERSION / 100000</tt> is the major version.
  */
-#define CUB_VERSION 101500
+#define CUB_VERSION 200001
 
 /*! \def CUB_MAJOR_VERSION
  *  \brief The preprocessor macro \p CUB_MAJOR_VERSION encodes the

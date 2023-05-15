@@ -51,11 +51,7 @@
 #define CUDAGLTYPEDEFS_H
 
 // Dependent includes for cudagl.h
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
 #include <GL/gl.h>
-#endif
 
 #include <cudaGL.h>
 

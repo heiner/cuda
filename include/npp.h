@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved.
   *
   * NOTICE TO LICENSEE:
   *
@@ -54,10 +54,10 @@
  *      Aggregates all other include files.
  */
 
-#define NPP_VER_MAJOR 11
-#define NPP_VER_MINOR 6
+#define NPP_VER_MAJOR 12
+#define NPP_VER_MINOR 0
 #define NPP_VER_PATCH 2
-#define NPP_VER_BUILD 112
+#define NPP_VER_BUILD 50
 
 #define NPP_VERSION (NPP_VER_MAJOR * 1000 +     \
                      NPP_VER_MINOR *  100 +     \

@@ -65,7 +65,7 @@
 #  define _CUDA_PIPELINE_STATIC_QUALIFIER static inline __device__
 # endif
 
-# if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+# if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
 #  define _CUDA_PIPELINE_ARCH_700_OR_LATER
 # endif
 

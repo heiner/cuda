@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -56,13 +56,31 @@
 #include "nppdefs.h"
 
 #ifdef __cplusplus
+#ifdef NPP_PLUS
+using namespace nppPlusV;
+#else
 extern "C" {
+#endif
 #endif
 
 /** @defgroup nppi NPP Image Processing
  * The set of image processing functions available in the library.
  * @{
  */
+#ifdef NPP_PLUS
+
+#include "nppPlus/nppiPlus_support_functions.h"
+#include "nppPlus/nppiPlus_data_exchange_and_initialization.h"
+#include "nppPlus/nppiPlus_arithmetic_and_logical_operations.h"
+#include "nppPlus/nppiPlus_color_conversion.h"
+#include "nppPlus/nppiPlus_threshold_and_compare_operations.h"
+#include "nppPlus/nppiPlus_morphological_operations.h"
+#include "nppPlus/nppiPlus_filtering_functions.h"
+#include "nppPlus/nppiPlus_statistics_functions.h"
+#include "nppPlus/nppiPlus_linear_transforms.h"
+#include "nppPlus/nppiPlus_geometry_transforms.h"
+
+#else
 
 #include "nppi_support_functions.h"
 #include "nppi_data_exchange_and_initialization.h"
@@ -75,10 +93,14 @@ extern "C" {
 #include "nppi_linear_transforms.h"
 #include "nppi_geometry_transforms.h"
 
+#endif
+
 /** @} end of Image Processing module */
 
 #ifdef __cplusplus
+#ifndef NPP_PLUS
 } /* extern "C" */
+#endif
 #endif
 
 #endif /* NV_NPPI_H */

@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -83,9 +83,9 @@ extern "C" {
  *
  * The typical processing proceedes as follows:
  * -# Transform the rectangular source ROI (given in source image coordinates)
- *		into the destination image space. This yields a quadrilateral.
+ *      into the destination image space. This yields a quadrilateral.
  * -# Write only pixels in the intersection of the transformed source ROI and
- *		the destination ROI.
+ *      the destination ROI.
  *
  * \subsection geometric_transforms_interpolation Pixel Interpolation
  *
@@ -1288,24 +1288,6 @@ nppiResize_32f_P4R(const Npp32f * pSrc[4], int nSrcStep, NppiSize oSrcSize, Nppi
  *
  */
 
-typedef struct
-{
-    const void * pSrc;  /* device memory pointer */
-    int nSrcStep;
-    void * pDst;        /* device memory pointer */
-    int nDstStep;
-} NppiResizeBatchCXR;
-
-/**
- * Data structure for variable ROI image resizing.
- * 
- */
-typedef struct
-{
-    NppiRect oSrcRectROI;    
-    NppiRect oDstRectROI;
-} NppiResizeBatchROI_Advanced; 
- 
 /**
  * 1 channel 8-bit image resize batch.
  *
@@ -2942,14 +2924,6 @@ nppiMirror_32f_AC4IR(Npp32f * pSrcDst, int nSrcDstStep, NppiSize oROI, NppiAxis 
  *
  */
 
-typedef struct
-{
-    const void * pSrc;  /* device memory pointer, ignored for in place versions */
-    int nSrcStep;
-    void * pDst;        /* device memory pointer */
-    int nDstStep;
-} NppiMirrorBatchCXR;
-
 /**
  * 1 channel 32-bit float image mirror batch.
  *
@@ -3803,16 +3777,6 @@ nppiWarpAffine_64f_P4R(const Npp64f * aSrc[4], NppiSize oSrcSize, int nSrcStep, 
  * @{
  *
  */
-
-typedef struct
-{
-    const void * pSrc;  /* device memory pointer */
-    int nSrcStep;
-    void * pDst;        /* device memory pointer */
-    int nDstStep;
-    Npp64f * pCoeffs;   /* device memory pointer to the tranformation matrix with double precision floating-point coefficient values to be used for this image */
-    Npp64f aTransformedCoeffs[2][3]; /* FOR INTERNAL USE, DO NOT INITIALIZE  */
-} NppiWarpAffineBatchCXR;
 
 
 /**
@@ -5487,16 +5451,6 @@ nppiWarpPerspective_32f_P4R(const Npp32f * pSrc[4], NppiSize oSrcSize, int nSrcS
  * @{
  *
  */
-
-typedef struct
-{
-    const void * pSrc;  /* device memory pointer */
-    int nSrcStep;
-    void * pDst;        /* device memory pointer */
-    int nDstStep;
-    Npp64f * pCoeffs;   /* device memory pointer to the tranformation matrix with double precision floating-point coefficient values to be used for this image */
-    Npp64f aTransformedCoeffs[3][3]; /* FOR INTERNAL USE, DO NOT INITIALIZE  */
-} NppiWarpPerspectiveBatchCXR;
 
 
 /**

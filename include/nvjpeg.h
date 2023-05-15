@@ -1,5 +1,5 @@
 /*
- * Copyright 2009-2019 NVIDIA Corporation.  All rights reserved.
+ * Copyright 2009-2022 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -67,10 +67,10 @@
 #define NVJPEG_MAX_COMPONENT 4
 
 // nvjpeg version information
-#define NVJPEG_VER_MAJOR 11
-#define NVJPEG_VER_MINOR 6
-#define NVJPEG_VER_PATCH 1
-#define NVJPEG_VER_BUILD 112
+#define NVJPEG_VER_MAJOR 12
+#define NVJPEG_VER_MINOR 1
+#define NVJPEG_VER_PATCH 0
+#define NVJPEG_VER_BUILD 39
 
 /* nvJPEG status enums, returned by nvJPEG API */
 typedef enum
@@ -155,7 +155,7 @@ typedef enum
 // NVJPEG_BACKEND_DEFAULT    : default value
 // NVJPEG_BACKEND_HYBRID     : uses CPU for Huffman decode
 // NVJPEG_BACKEND_GPU_HYBRID : uses GPU assisted Huffman decode. nvjpegDecodeBatched will use GPU decoding for baseline JPEG bitstreams with
-//                             interleaved scan when batch size is bigger than 100
+//                             interleaved scan when batch size is bigger than 50
 // NVJPEG_BACKEND_HARDWARE   : supports baseline JPEG bitstream with single scan. 410 and 411 sub-samplings are not supported
 // NVJPEG_BACKEND_GPU_HYBRID_DEVICE : nvjpegDecodeBatched will support bitstream input on device memory
 // NVJPEG_BACKEND_HARDWARE_DEVICE   : nvjpegDecodeBatched will support bitstream input on device memory
@@ -192,6 +192,10 @@ typedef enum
 #define NVJPEG_FLAGS_HW_DECODE_NO_PIPELINE 1
 #define NVJPEG_FLAGS_ENABLE_MEMORY_POOLS   1<<1
 #define NVJPEG_FLAGS_BITSTREAM_STRICT  1<<2
+#define NVJPEG_FLAGS_REDUCED_MEMORY_DECODE  1<<3
+#define NVJPEG_FLAGS_REDUCED_MEMORY_DECODE_ZERO_COPY  1<<4
+#define NVJPEG_FLAGS_UPSAMPLING_WITH_INTERPOLATION 1<<5
+
 
 // Output descriptor.
 // Data that is written to planes depends on output format
@@ -229,6 +233,30 @@ typedef struct
     tPinnedFree pinned_free;
 } nvjpegPinnedAllocator_t;
 
+
+typedef int (*tDevMallocV2)(void* ctx, void **ptr, size_t size, cudaStream_t stream);
+
+typedef int (*tDevFreeV2)(void* ctx, void *ptr, size_t size, cudaStream_t stream);
+
+
+typedef int (*tPinnedMallocV2)(void* ctx, void **ptr, size_t size, cudaStream_t stream);
+
+typedef int (*tPinnedFreeV2)(void* ctx, void *ptr, size_t size, cudaStream_t stream);
+
+typedef struct
+{
+    tDevMallocV2 dev_malloc;
+    tDevFreeV2 dev_free;
+    void *dev_ctx;
+} nvjpegDevAllocatorV2_t;
+
+typedef struct
+{
+    tPinnedMallocV2 pinned_malloc;
+    tPinnedFreeV2 pinned_free;
+    void *pinned_ctx;
+} nvjpegPinnedAllocatorV2_t;
+
 // Opaque library handle identifier.
 struct nvjpegHandle;
 typedef struct nvjpegHandle* nvjpegHandle_t;
@@ -265,6 +293,12 @@ nvjpegStatus_t NVJPEGAPI nvjpegCreateEx(nvjpegBackend_t backend,
         unsigned int flags,
         nvjpegHandle_t *handle);
 
+nvjpegStatus_t NVJPEGAPI nvjpegCreateExV2(nvjpegBackend_t backend,
+        nvjpegDevAllocatorV2_t *dev_allocator,
+        nvjpegPinnedAllocatorV2_t *pinned_allocator,
+        unsigned int flags,
+        nvjpegHandle_t *handle);
+
 // Release the handle and resources.
 // IN/OUT     handle: instance handle to release 
 nvjpegStatus_t NVJPEGAPI nvjpegDestroy(nvjpegHandle_t handle);
@@ -291,6 +325,10 @@ nvjpegStatus_t NVJPEGAPI nvjpegSetPinnedMemoryPadding(size_t padding, nvjpegHand
 // IN/OUT     handle: instance handle to release 
 nvjpegStatus_t NVJPEGAPI nvjpegGetPinnedMemoryPadding(size_t *padding, nvjpegHandle_t handle);
 
+
+nvjpegStatus_t NVJPEGAPI nvjpegGetHardwareDecoderInfo(nvjpegHandle_t handle,
+        unsigned int* num_engines,
+        unsigned int* num_cores_per_engine);
 
 
 // Initalization of decoding state
@@ -519,6 +557,10 @@ nvjpegStatus_t NVJPEGAPI nvjpegBufferPinnedCreate(nvjpegHandle_t handle,
     nvjpegPinnedAllocator_t* pinned_allocator,
     nvjpegBufferPinned_t* buffer);
 
+nvjpegStatus_t NVJPEGAPI nvjpegBufferPinnedCreateV2(nvjpegHandle_t handle,
+    nvjpegPinnedAllocatorV2_t* pinned_allocator,
+    nvjpegBufferPinned_t* buffer);
+
 nvjpegStatus_t NVJPEGAPI nvjpegBufferPinnedDestroy(nvjpegBufferPinned_t buffer);
 
 struct nvjpegBufferDevice;
@@ -526,6 +568,10 @@ typedef struct nvjpegBufferDevice* nvjpegBufferDevice_t;
 
 nvjpegStatus_t NVJPEGAPI nvjpegBufferDeviceCreate(nvjpegHandle_t handle, 
     nvjpegDevAllocator_t* device_allocator, 
+    nvjpegBufferDevice_t* buffer);
+
+nvjpegStatus_t NVJPEGAPI nvjpegBufferDeviceCreateV2(nvjpegHandle_t handle,
+    nvjpegDevAllocatorV2_t* device_allocator,
     nvjpegBufferDevice_t* buffer);
 
 nvjpegStatus_t NVJPEGAPI nvjpegBufferDeviceDestroy(nvjpegBufferDevice_t buffer);

@@ -1,5 +1,5 @@
 
- /* Copyright 2005-2014 NVIDIA Corporation.  All rights reserved.
+ /* Copyright 2005-2021 NVIDIA Corporation.  All rights reserved.
   *
   * NOTICE TO LICENSEE:
   *
@@ -82,7 +82,9 @@ typedef enum cufftXtSubFormat_t {
     CUFFT_XT_FORMAT_INPLACE = 0x02,            //by default inplace is input order, which is linear across GPUs
     CUFFT_XT_FORMAT_INPLACE_SHUFFLED = 0x03,   //shuffled output order after execution of the transform
     CUFFT_XT_FORMAT_1D_INPUT_SHUFFLED = 0x04,  //shuffled input order prior to execution of 1D transforms
-    CUFFT_FORMAT_UNDEFINED = 0x05
+    CUFFT_XT_FORMAT_DISTRIBUTED_INPUT = 0x05,
+    CUFFT_XT_FORMAT_DISTRIBUTED_OUTPUT = 0x06,
+    CUFFT_FORMAT_UNDEFINED = 0x07
 } cufftXtSubFormat;
 
 //
@@ -249,6 +251,15 @@ cufftResult CUFFTAPI cufftXtExecDescriptor(cufftHandle plan,
                                            int direction);
 
 cufftResult CUFFTAPI cufftXtSetWorkAreaPolicy(cufftHandle plan, cufftXtWorkAreaPolicy policy, size_t *workSize);
+
+cufftResult CUFFTAPI cufftXtSetDistribution(cufftHandle plan, 
+                                            int rank, 
+                                            const long long int* lower_input,  
+                                            const long long int* upper_input,
+                                            const long long int* lower_output,
+                                            const long long int* upper_output,
+                                            const long long int* strides_input, 
+                                            const long long int* strides_output);
 
 #ifdef __cplusplus
 }

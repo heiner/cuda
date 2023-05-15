@@ -71,33 +71,6 @@
 *                                                                              *
 *******************************************************************************/
 
-template<class T, int dim = 1>
-struct __device_builtin_surface_type__ surface : public surfaceReference
-{
-#if !defined(__CUDACC_RTC__)
-  __host__ surface(void)
-  {
-    channelDesc = cudaCreateChannelDesc<T>();
-  }
-
-  __host__ surface(struct cudaChannelFormatDesc desc)
-  {
-    channelDesc = desc;
-  }
-#endif /* !__CUDACC_RTC__ */  
-};
-
-template<int dim>
-struct  __device_builtin_surface_type__  surface<void, dim> : public surfaceReference
-{
-#if !defined(__CUDACC_RTC__)
-  __host__ surface(void)
-  {
-    channelDesc = cudaCreateChannelDesc<void>();
-  }
-#endif /* !__CUDACC_RTC__ */  
-};
-
 #endif /* __cplusplus && __CUDACC__ */
 
 #endif /* !__CUDA_SURFACE_TYPES_H__ */

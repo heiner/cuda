@@ -1,4 +1,4 @@
- /* Copyright 2010-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2010-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -56,7 +56,11 @@
 #include "nppdefs.h"
 
 #ifdef __cplusplus
+#ifdef NPP_PLUS
+using namespace nppPlusV;
+#else
 extern "C" {
+#endif
 #endif
 
 /** @defgroup npps NPP Signal Processing
@@ -65,6 +69,17 @@ extern "C" {
  *
  */
 
+#ifdef NPP_PLUS
+
+#include "nppPlus/nppsPlus_support_functions.h"
+#include "nppPlus/nppsPlus_initialization.h"
+#include "nppPlus/nppsPlus_conversion_functions.h"
+#include "nppPlus/nppsPlus_arithmetic_and_logical_operations.h"
+#include "nppPlus/nppsPlus_statistics_functions.h"
+#include "nppPlus/nppsPlus_filtering_functions.h"
+
+#else
+
 #include "npps_support_functions.h"
 #include "npps_initialization.h"
 #include "npps_conversion_functions.h"
@@ -72,10 +87,14 @@ extern "C" {
 #include "npps_statistics_functions.h"
 #include "npps_filtering_functions.h"
 
+#endif
+
 /** @} end of Signal Processing module */
  
 #ifdef __cplusplus
+#ifndef NPP_PLUS
 } /* extern "C" */
+#endif
 #endif
 
 #endif /* NV_NPPS_H */

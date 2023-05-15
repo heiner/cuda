@@ -48,231 +48,168 @@
  */
 
 #ifndef _CUDA_AWBARRIER_HELPERS_H_
-# define _CUDA_AWBARRIER_HELPERS_H_
+#define _CUDA_AWBARRIER_HELPERS_H_
 
-# define _CUDA_AWBARRIER_NAMESPACE       nvcuda::experimental
-# define _CUDA_AWBARRIER_BEGIN_NAMESPACE namespace nvcuda { namespace experimental {
-# define _CUDA_AWBARRIER_END_NAMESPACE   } }
+#define _CUDA_AWBARRIER_NAMESPACE       nvcuda::experimental
+#define _CUDA_AWBARRIER_BEGIN_NAMESPACE namespace nvcuda { namespace experimental {
+#define _CUDA_AWBARRIER_END_NAMESPACE   } }
 
-# define _CUDA_AWBARRIER_INTERNAL_NAMESPACE       _CUDA_AWBARRIER_NAMESPACE::__awbarrier_internal
-# define _CUDA_AWBARRIER_BEGIN_INTERNAL_NAMESPACE _CUDA_AWBARRIER_BEGIN_NAMESPACE namespace __awbarrier_internal {
-# define _CUDA_AWBARRIER_END_INTERNAL_NAMESPACE   } _CUDA_AWBARRIER_END_NAMESPACE
+#define _CUDA_AWBARRIER_INTERNAL_NAMESPACE       _CUDA_AWBARRIER_NAMESPACE::__awbarrier_internal
+#define _CUDA_AWBARRIER_BEGIN_INTERNAL_NAMESPACE _CUDA_AWBARRIER_BEGIN_NAMESPACE namespace __awbarrier_internal {
+#define _CUDA_AWBARRIER_END_INTERNAL_NAMESPACE   } _CUDA_AWBARRIER_END_NAMESPACE
 
 # if !defined(_CUDA_AWBARRIER_QUALIFIER)
 #  define _CUDA_AWBARRIER_QUALIFIER inline __device__
 # endif
 # if !defined(_CUDA_AWBARRIER_STATIC_QUALIFIER)
 #  define _CUDA_AWBARRIER_STATIC_QUALIFIER static inline __device__
-# endif
+#endif
 
-# if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
-#  define _CUDA_AWBARRIER_ARCH_700_OR_LATER
-# endif
+#if defined(__CUDA_ARCH__)
+#if (__CUDA_ARCH__ >= 900)
+# define _CUDA_AWBARRIER_SM_TARGET _CUDA_AWBARRIER_SM_90
+#elif  (__CUDA_ARCH__ >= 800)
+# define _CUDA_AWBARRIER_SM_TARGET _CUDA_AWBARRIER_SM_80
+#elif (__CUDA_ARCH__ >= 700)
+# define _CUDA_AWBARRIER_SM_TARGET _CUDA_AWBARRIER_SM_70
+#endif
+#else
+# define _CUDA_AWBARRIER_SM_TARGET _CUDA_AWBARRIER_SM_70
+#endif
 
-# define _CUDA_AWBARRIER_MAX_COUNT ((1 << 14) - 1)
+#define _CUDA_AWBARRIER_MAX_COUNT ((1 << 14) - 1)
 
-# if (__CUDA_ARCH__ >= 800)
-#  define _CUDA_AWBARRIER_HAS_HW_MBARRIER 1
+#if defined(__cplusplus) && ((__cplusplus >= 201103L) || (defined(_MSC_VER) && (_MSC_VER >= 1900)))
+# define _CUDA_AWBARRIER_CPLUSPLUS_11_OR_LATER
+#endif
+
+#if !defined(_CUDA_AWBARRIER_DEBUG)
+# if defined(__CUDACC_DEBUG__)
+#  define _CUDA_AWBARRIER_DEBUG 1
 # else
-#  define _CUDA_AWBARRIER_HAS_HW_MBARRIER 0
+#  define _CUDA_AWBARRIER_DEBUG 0
 # endif
+#endif
 
-# if defined(__cplusplus) && ((__cplusplus >= 201103L) || (defined(_MSC_VER) && (_MSC_VER >= 1900)))
-#  define _CUDA_AWBARRIER_CPLUSPLUS_11_OR_LATER
+#if defined(_CUDA_AWBARRIER_DEBUG) && (_CUDA_AWBARRIER_DEBUG == 1) && !defined(NDEBUG)
+# if !defined(__CUDACC_RTC__)
+#  include <cassert>
 # endif
+# define _CUDA_AWBARRIER_ASSERT(x) assert((x));
+# define _CUDA_AWBARRIER_ABORT() assert(0);
+#else
+# define _CUDA_AWBARRIER_ASSERT(x)
+# define _CUDA_AWBARRIER_ABORT() __trap();
+#endif
 
-# if !defined(_CUDA_AWBARRIER_DEBUG)
-#  if defined(__CUDACC_DEBUG__)
-#   define _CUDA_AWBARRIER_DEBUG 1
-#  else
-#   define _CUDA_AWBARRIER_DEBUG 0
-#  endif
-# endif
-
-# if defined(_CUDA_AWBARRIER_DEBUG) && (_CUDA_AWBARRIER_DEBUG == 1) && !defined(NDEBUG)
-#  if !defined(__CUDACC_RTC__)
-#   include <cassert>
-#  endif
-#  define _CUDA_AWBARRIER_ASSERT(x) assert((x));
-#  define _CUDA_AWBARRIER_ABORT() assert(0);
-# else
-#  define _CUDA_AWBARRIER_ASSERT(x)
-#  define _CUDA_AWBARRIER_ABORT() __trap();
-# endif
-
-
-# if defined(_MSC_VER) && !defined(_WIN64)
-#  define _CUDA_AWBARRIER_ASM_PTR_CONSTRAINT "r"
-# else
-#  define _CUDA_AWBARRIER_ASM_PTR_CONSTRAINT "l"
-# endif
-
-# if defined(__CUDACC_RTC__)
+#if defined(__CUDACC_RTC__)
 typedef unsigned short     uint16_t;
 typedef unsigned int       uint32_t;
 typedef unsigned long long uint64_t;
 typedef uint64_t           uintptr_t;
-# else
-#  include <stdint.h>
-# endif
+#else
+# include <stdint.h>
+#endif
 
-# if defined(_CUDA_AWBARRIER_ARCH_700_OR_LATER)
+// implicitly provided by NVRTC
+#ifndef __CUDACC_RTC__
+#include <nv/target>
+#endif /* !defined(__CUDACC_RTC__) */
+
+typedef uint64_t __mbarrier_t;
+typedef uint64_t __mbarrier_token_t;
 
 _CUDA_AWBARRIER_BEGIN_INTERNAL_NAMESPACE
 
 extern "C" __device__ uint32_t __nvvm_get_smem_pointer(void *);
 
-template<bool UseHWAtomicArrive>
-struct ImplementationChooser;
-
-template<>
-struct ImplementationChooser<true> {
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    void awbarrier_init(uint64_t* barrier, uint32_t expected_count)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-        _CUDA_AWBARRIER_ASSERT(expected_count > 0 && expected_count < (1 << 29));
-
-        asm volatile ("mbarrier.init.shared.b64 [%0], %1;"
-            :
-            : "r"(__nvvm_get_smem_pointer(barrier)), "r"(expected_count)
-            : "memory");
-    }
-
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    void awbarrier_inval(uint64_t* barrier)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
-        asm volatile ("mbarrier.inval.shared.b64 [%0];"
-            :
-            : "r"(__nvvm_get_smem_pointer(barrier))
-            : "memory");
-    }
-
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint32_t awbarrier_token_pending_count(uint64_t token)
-    {
-        uint32_t pending_count;
-
-        asm ("mbarrier.pending_count.b64 %0, %1;"
-            : "=r"(pending_count)
-            : "l"(token));
-        return pending_count;
-    }
-
-    template<bool Drop>
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint64_t awbarrier_arrive_drop(uint64_t* barrier)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
-        uint64_t token;
-
-        if (Drop) {
-            asm volatile ("mbarrier.arrive_drop.shared.b64 %0, [%1];"
-                : "=l"(token)
-                : "r"(__nvvm_get_smem_pointer(barrier))
-                          : "memory");
-        } else {
-            asm volatile ("mbarrier.arrive.shared.b64 %0, [%1];"
-                : "=l"(token)
-                : "r"(__nvvm_get_smem_pointer(barrier))
-                : "memory");
-        }
-
-        return token;
-    }
-
-    template<bool Drop>
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint64_t awbarrier_arrive_drop_no_complete(uint64_t* barrier, uint32_t count)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-        _CUDA_AWBARRIER_ASSERT(count > 0 && count < (1 << 29));
-
-        uint64_t token;
-
-        if (Drop) {
-            asm volatile ("mbarrier.arrive_drop.noComplete.shared.b64 %0, [%1], %2;"
-                : "=l"(token)
-                : "r"(__nvvm_get_smem_pointer(barrier)), "r"(count)
-                : "memory");
-        } else {
-            asm volatile ("mbarrier.arrive.noComplete.shared.b64 %0, [%1], %2;"
-                : "=l"(token)
-                : "r"(__nvvm_get_smem_pointer(barrier)), "r"(count)
-                : "memory");
-        }
-
-        return token;
-    }
-
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    bool awbarrier_test_wait(uint64_t* barrier, uint64_t token)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
-        uint16_t wait_complete;
-
-        asm volatile ("{"
-                      "    .reg .pred %%p;"
-                      "    mbarrier.test_wait.shared.b64 %%p, [%1], %2;"
-                      "    selp.u16 %0, 1, 0, %%p;"
-                      "}"
-            : "=h"(wait_complete)
-            : "r"(__nvvm_get_smem_pointer(barrier)), "l"(token)
-            : "memory");
-        return bool(wait_complete);
-    }
+union AWBarrier {
+    struct {
+        uint32_t expected;
+        uint32_t pending;
+    } split;
+    uint64_t raw;
 };
 
-template<>
-struct ImplementationChooser<false> {
-    union AWBarrier {
-        struct {
-            uint32_t expected;
-            uint32_t pending;
-        } split;
-        uint64_t raw;
-    };
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+void awbarrier_init(uint64_t* barrier, uint32_t expected_count) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+    _CUDA_AWBARRIER_ASSERT(expected_count > 0 && expected_count < (1 << 29));
 
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    void awbarrier_init(uint64_t* barrier, uint32_t expected_count)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-        _CUDA_AWBARRIER_ASSERT(expected_count > 0 && expected_count < (1 << 29));
-
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        asm volatile ("mbarrier.init.shared.b64 [%0], %1;"
+                :
+                : "r"(__nvvm_get_smem_pointer(barrier)), "r"(expected_count)
+                : "memory");
+        return;
+    )
+    NV_IF_TARGET(NV_PROVIDES_SM_70,
         AWBarrier* awbarrier = reinterpret_cast<AWBarrier*>(barrier);
 
         awbarrier->split.expected = 0x40000000 - expected_count;
         awbarrier->split.pending = 0x80000000 - expected_count;
-    }
+        return;
+    )
+}
 
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    void awbarrier_inval(uint64_t* barrier)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-    }
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+void awbarrier_inval(uint64_t* barrier) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
 
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint32_t awbarrier_token_pending_count(uint64_t token)
-    {
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        asm volatile ("mbarrier.inval.shared.b64 [%0];"
+                :
+                : "r"(__nvvm_get_smem_pointer(barrier))
+                : "memory");
+        return;
+    )
+    return;
+}
+
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+uint32_t awbarrier_token_pending_count(uint64_t token) {
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        uint32_t __pending_count;
+
+        asm ("mbarrier.pending_count.b64 %0, %1;"
+                : "=r"(__pending_count)
+                : "l"(token));
+        return __pending_count;
+    )
+    NV_IF_TARGET(NV_PROVIDES_SM_70,
         const uint32_t pending = token >> 32;
         return 0x80000000 - (pending & 0x7fffffff);
-    }
+    )
+}
 
-    template<bool Drop>
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint64_t awbarrier_arrive_drop(uint64_t* barrier)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+template<bool _Drop>
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+uint64_t awbarrier_arrive_drop(uint64_t* barrier) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
 
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        uint64_t token;
+
+        if (_Drop) {
+            asm volatile ("mbarrier.arrive_drop.shared.b64 %0, [%1];"
+                    : "=l"(token)
+                    : "r"(__nvvm_get_smem_pointer(barrier))
+                    : "memory");
+        } else {
+            asm volatile ("mbarrier.arrive.shared.b64 %0, [%1];"
+                    : "=l"(token)
+                    : "r"(__nvvm_get_smem_pointer(barrier))
+                    : "memory");
+        }
+
+        return token;
+    )
+    NV_IF_TARGET(NV_PROVIDES_SM_70,
         AWBarrier* awbarrier = reinterpret_cast<AWBarrier*>(barrier);
 
         while ((*reinterpret_cast<volatile uint32_t*>(&awbarrier->split.pending) & 0x7fffffff) == 0);
 
-        if (Drop) {
+        if (_Drop) {
             (void)atomicAdd_block(&awbarrier->split.expected, 1);
         }
 
@@ -294,77 +231,135 @@ struct ImplementationChooser<false> {
         }
 
         return static_cast<uint64_t>(old_pending) << 32;
-    }
+    )
+}
 
-    template<bool Drop>
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    uint64_t awbarrier_arrive_drop_no_complete(uint64_t* barrier, uint32_t count)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-        _CUDA_AWBARRIER_ASSERT(count > 0 && count < (1 << 29));
+template<bool _Drop>
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+uint64_t awbarrier_arrive_drop_no_complete(uint64_t* barrier, uint32_t count) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+    _CUDA_AWBARRIER_ASSERT(count > 0 && count < (1 << 29));
 
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        uint64_t token;
+
+        if (_Drop) {
+            asm volatile ("mbarrier.arrive_drop.noComplete.shared.b64 %0, [%1], %2;"
+                    : "=l"(token)
+                    : "r"(__nvvm_get_smem_pointer(barrier)), "r"(count)
+                    : "memory");
+        } else {
+            asm volatile ("mbarrier.arrive.noComplete.shared.b64 %0, [%1], %2;"
+                    : "=l"(token)
+                    : "r"(__nvvm_get_smem_pointer(barrier)), "r"(count)
+                    : "memory");
+        }
+
+        return token;
+    )
+    NV_IF_TARGET(NV_PROVIDES_SM_70,
         AWBarrier* awbarrier = reinterpret_cast<AWBarrier*>(barrier);
 
         while ((*reinterpret_cast<volatile uint32_t*>(&awbarrier->split.pending) & 0x7fffffff) == 0);
 
-        if (Drop) {
+        if (_Drop) {
             (void)atomicAdd_block(&awbarrier->split.expected, count);
         }
 
         return static_cast<uint64_t>(atomicAdd_block(&awbarrier->split.pending, count)) << 32;
-    }
+    )
+}
 
-    _CUDA_AWBARRIER_STATIC_QUALIFIER
-    bool awbarrier_test_wait(uint64_t* barrier, uint64_t token)
-    {
-        _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool awbarrier_test_wait(uint64_t* barrier, uint64_t token) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
 
+    NV_IF_TARGET(NV_PROVIDES_SM_80,
+        uint32_t __wait_complete;
+
+        asm volatile ("{"
+                "    .reg .pred %%p;"
+                "    mbarrier.test_wait.shared.b64 %%p, [%1], %2;"
+                "    selp.b32 %0, 1, 0, %%p;"
+                "}"
+                : "=r"(__wait_complete)
+                : "r"(__nvvm_get_smem_pointer(barrier)), "l"(token)
+                : "memory");
+        return bool(__wait_complete);
+    )
+    NV_IF_TARGET(NV_PROVIDES_SM_70,
         volatile AWBarrier* awbarrier = reinterpret_cast<volatile AWBarrier*>(barrier);
 
         return ((token >> 32) ^ awbarrier->split.pending) & 0x80000000;
-    }
-};
-
-_CUDA_AWBARRIER_QUALIFIER
-void awbarrier_init(uint64_t* barrier, uint32_t expected_count)
-{
-    ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_init(barrier, expected_count);
+    )
 }
 
-_CUDA_AWBARRIER_QUALIFIER
-void awbarrier_inval(uint64_t* barrier)
-{
-    ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_inval(barrier);
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool awbarrier_test_wait_parity(uint64_t* barrier, bool phase_parity) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+    
+    NV_IF_TARGET(NV_PROVIDES_SM_90,
+        uint32_t __wait_complete = 0;
+
+        asm volatile ("{"
+                    ".reg .pred %%p;"
+                    "mbarrier.test_wait.parity.shared.b64 %%p, [%1], %2;"
+                    "selp.b32 %0, 1, 0, %%p;"
+                    "}"
+                : "=r"(__wait_complete)
+                : "r"(__nvvm_get_smem_pointer(barrier)), "r"(static_cast<uint32_t>(phase_parity))
+                : "memory");
+
+        return __wait_complete;
+    )
+    _CUDA_AWBARRIER_ABORT()
+    return false;
 }
 
-_CUDA_AWBARRIER_QUALIFIER
-uint32_t awbarrier_token_pending_count(uint64_t token)
-{
-    return ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_token_pending_count(token);
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool awbarrier_try_wait(uint64_t* barrier, uint64_t token, uint32_t max_sleep_nanosec) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+    
+    NV_IF_TARGET(NV_PROVIDES_SM_90,
+        uint32_t __wait_complete = 0;
+
+        asm volatile ("{\n\t"
+                    ".reg .pred p;\n\t"
+                    "mbarrier.try_wait.shared.b64 p, [%1], %2, %3;\n\t"
+                    "selp.b32 %0, 1, 0, p;\n\t"
+                    "}"
+                : "=r"(__wait_complete)
+                : "r"(__nvvm_get_smem_pointer(barrier)), "l"(token), "r"(max_sleep_nanosec)
+                : "memory");
+
+        return __wait_complete;
+    )
+    _CUDA_AWBARRIER_ABORT()
+    return false;
 }
 
-template<bool Drop>
-_CUDA_AWBARRIER_QUALIFIER
-uint64_t awbarrier_arrive_drop_no_complete(uint64_t* barrier, uint32_t arrive_count)
-{
-    return ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_arrive_drop_no_complete<Drop>(barrier, arrive_count);
-}
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool awbarrier_try_wait_parity(uint64_t* barrier, bool phase_parity, uint32_t max_sleep_nanosec) {
+    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
+    
+    NV_IF_TARGET(NV_PROVIDES_SM_90,
+        uint32_t __wait_complete = 0;
 
-template<bool Drop>
-_CUDA_AWBARRIER_QUALIFIER
-uint64_t awbarrier_arrive_drop(uint64_t* barrier)
-{
-    return ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_arrive_drop<Drop>(barrier);
-}
+        asm volatile ("{\n\t"
+                    ".reg .pred p;\n\t"
+                    "mbarrier.try_wait.parity.shared.b64 p, [%1], %2, %3;\n\t"
+                    "selp.b32 %0, 1, 0, p;\n\t"
+                    "}"
+                : "=r"(__wait_complete)
+                : "r"(__nvvm_get_smem_pointer(barrier)), "r"(static_cast<uint32_t>(phase_parity)), "r"(max_sleep_nanosec)
+                : "memory");
 
-_CUDA_AWBARRIER_QUALIFIER
-bool awbarrier_test_wait(uint64_t* barrier, uint64_t token)
-{
-    return ImplementationChooser<_CUDA_AWBARRIER_HAS_HW_MBARRIER>::awbarrier_test_wait(barrier, token);
+        return __wait_complete;
+    )
+    _CUDA_AWBARRIER_ABORT()
+    return false;
 }
 
 _CUDA_AWBARRIER_END_INTERNAL_NAMESPACE
-
-# endif /* !_CUDA_AWBARRIER_ARCH_700_OR_LATER */
 
 #endif /* !_CUDA_AWBARRIER_HELPERS_H_ */

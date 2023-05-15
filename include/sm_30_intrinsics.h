@@ -52,13 +52,15 @@
 
 #if defined(__CUDACC_RTC__)
 #define __SM_30_INTRINSICS_DECL__ __device__
+#elif defined(_NVHPC_CUDA)
+#define __SM_30_INTRINSICS_DECL__ extern __device__ __cudart_builtin__
 #else /* !__CUDACC_RTC__ */
 #define __SM_30_INTRINSICS_DECL__ static __device__ __inline__
 #endif /* __CUDACC_RTC__ */
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 300
 
 /*******************************************************************************
 *                                                                              *
@@ -68,7 +70,9 @@
 
 #include "cuda_runtime_api.h"
 
-#ifndef __CUDA_ARCH__
+/* Add !defined(_NVHPC_CUDA) to avoid empty function definition in CUDA
+ * C++ compiler where the macro __CUDA_ARCH__ is not defined. */
+#if !defined(__CUDA_ARCH__) && !defined(_NVHPC_CUDA)
 #define __DEF_IF_HOST { }
 #else  /* !__CUDA_ARCH__ */
 #define __DEF_IF_HOST ;
@@ -95,8 +99,10 @@
 # define __DEPRECATED__(msg) __attribute__((deprecated(msg)))
 #endif
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
 #define __WSB_DEPRECATION_MESSAGE(x) #x"() is deprecated in favor of "#x"_sync() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
+#elif defined(_NVHPC_CUDA)
+#define __WSB_DEPRECATION_MESSAGE(x) #x"() is not valid on cc70 and above, and should be replaced with "#x"_sync()."
 #endif
 
 __SM_30_INTRINSICS_DECL__ unsigned  __fns(unsigned mask, unsigned base, int offset) __DEF_IF_HOST
@@ -115,7 +121,7 @@ __SM_30_INTRINSICS_DECL__ unsigned __activemask() __DEF_IF_HOST
 //    the "warpSize" constant at this time
 // b) we cannot map the float __shfl to the int __shfl because it'll mess with
 //    the register number (especially if you're doing two shfls to move a double).
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) int __shfl(int var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) unsigned int __shfl(unsigned int var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_up)) int __shfl_up(int var, unsigned int delta, int width=warpSize) __DEF_IF_HOST
@@ -144,7 +150,7 @@ __SM_30_INTRINSICS_DECL__ float __shfl_down_sync(unsigned mask, float var, unsig
 __SM_30_INTRINSICS_DECL__ float __shfl_xor_sync(unsigned mask, float var, int laneMask, int width=warpSize) __DEF_IF_HOST
 
 // 64-bits SHFL
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) unsigned long long __shfl(unsigned long long var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) long long __shfl(long long var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_up)) long long __shfl_up(long long var, unsigned int delta, int width=warpSize) __DEF_IF_HOST
@@ -173,7 +179,7 @@ __SM_30_INTRINSICS_DECL__ double __shfl_down_sync(unsigned mask, double var, uns
 __SM_30_INTRINSICS_DECL__ double __shfl_xor_sync(unsigned mask, double var, int laneMask, int width=warpSize) __DEF_IF_HOST
 
 // long needs some help to choose between 32-bits and 64-bits
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ < 700
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) long __shfl(long var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl)) unsigned long __shfl(unsigned long var, int srcLane, int width=warpSize) __DEF_IF_HOST
 __SM_30_INTRINSICS_DECL__ __DEPRECATED__(__WSB_DEPRECATION_MESSAGE(__shfl_up)) long __shfl_up(long var, unsigned int delta, int width=warpSize) __DEF_IF_HOST

@@ -58,7 +58,7 @@
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
 
 /*******************************************************************************
 *                                                                              *
@@ -124,7 +124,7 @@ __SM_32_ATOMIC_FUNCTIONS_DECL__ unsigned long long atomicXor(unsigned long long 
     return __ullAtomicXor(address, val);
 }
 
-#endif /* !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
+#endif /* _NVHPC_CUDA || !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
 
 #endif /* __cplusplus && __CUDACC__ */
 

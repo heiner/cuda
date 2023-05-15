@@ -66,6 +66,11 @@
 
 #include "cuda_runtime_api.h"
 
+#if defined(_NVHPC_CUDA)
+#undef __device_builtin__
+#define __device_builtin__ __location__(device) __location__(host)
+#endif /* _NVHPC_CUDA */
+
 #ifndef __CUDA_ARCH__
 #define __DEF_IF_HOST { }
 #else  /* !__CUDA_ARCH__ */
@@ -83,6 +88,8 @@
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 700
 #define __WSB_DEPRECATION_MESSAGE(x) #x"() is not valid on compute_70 and above, and should be replaced with "#x"_sync()."\
     "To continue using "#x"(), specify virtual architecture compute_60 when targeting sm_70 and above, for example, using the pair of compiler options: -arch=compute_60 -code=sm_70."
+#elif defined(_NVHPC_CUDA)
+#define __WSB_DEPRECATION_MESSAGE(x) #x"() is not valid on cc70 and above, and should be replaced with "#x"_sync()."
 #else
 #define __WSB_DEPRECATION_MESSAGE(x) #x"() is deprecated in favor of "#x"_sync() and may be removed in a future release (Use -Wno-deprecated-declarations to suppress this warning)."
 #endif
@@ -1502,6 +1509,11 @@ extern __device__ __device_builtin__ double                 __hiloint2double(int
 
 }
 
+#if defined(_NVHPC_CUDA)
+#undef __device_builtin__
+#define __device_builtin__
+#endif /* _NVHPC_CUDA */
+
 /*******************************************************************************
 *                                                                              *
 *                                                                              *
@@ -1522,17 +1534,24 @@ __SM_20_INTRINSICS_DECL__ unsigned int __isGlobal(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ unsigned int __isShared(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ unsigned int __isConstant(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ unsigned int __isLocal(const void *ptr) __DEF_IF_HOST
-
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+__SM_20_INTRINSICS_DECL__ unsigned int __isGridConstant(const void *ptr) __DEF_IF_HOST
+#endif  /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700) */
 __SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_global(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_shared(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_constant(const void *ptr) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_local(const void *ptr) __DEF_IF_HOST
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+__SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_grid_constant(const void *ptr) __DEF_IF_HOST
+#endif  /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700) */
 
 __SM_20_INTRINSICS_DECL__ void * __cvta_global_to_generic(size_t rawbits) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ void * __cvta_shared_to_generic(size_t rawbits) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ void * __cvta_constant_to_generic(size_t rawbits) __DEF_IF_HOST
 __SM_20_INTRINSICS_DECL__ void * __cvta_local_to_generic(size_t rawbits) __DEF_IF_HOST
-
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+__SM_20_INTRINSICS_DECL__ void * __cvta_grid_constant_to_generic(size_t rawbits) __DEF_IF_HOST
+#endif  /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700) */
 #endif /* __cplusplus && __CUDACC__ */
 
 #undef __DEF_IF_HOST

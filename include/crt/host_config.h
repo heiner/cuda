@@ -127,19 +127,19 @@
 
 #if defined(__GNUC__)
 
-#if __GNUC__ > 11
+#if __GNUC__ > 12
 
-#error -- unsupported GNU version! gcc versions later than 11 are not supported! The nvcc flag '-allow-unsupported-compiler' can be used to override this version check; however, using an unsupported host compiler may cause compilation failure or incorrect run time execution. Use at your own risk.
+#error -- unsupported GNU version! gcc versions later than 12 are not supported! The nvcc flag '-allow-unsupported-compiler' can be used to override this version check; however, using an unsupported host compiler may cause compilation failure or incorrect run time execution. Use at your own risk.
 
-#endif /* __GNUC__ > 11 */
+#endif /* __GNUC__ > 12 */
 
 
 #if defined(__clang__) && !defined(__ibmxl_vrm__) && !defined(__ICC) && !defined(__HORIZON__) && !defined(__APPLE__)
 
-#if (__clang_major__ >= 14) || (__clang_major__ < 3) || ((__clang_major__ == 3) &&  (__clang_minor__ < 3))
-#error -- unsupported clang version! clang version must be less than 14 and greater than 3.2 . The nvcc flag '-allow-unsupported-compiler' can be used to override this version check; however, using an unsupported host compiler may cause compilation failure or incorrect run time execution. Use at your own risk.
+#if (__clang_major__ >= 16) || (__clang_major__ < 3) || ((__clang_major__ == 3) &&  (__clang_minor__ < 3))
+#error -- unsupported clang version! clang version must be less than 16 and greater than 3.2 . The nvcc flag '-allow-unsupported-compiler' can be used to override this version check; however, using an unsupported host compiler may cause compilation failure or incorrect run time execution. Use at your own risk.
 
-#endif  /* (__clang_major__ >=  14) || (__clang_major__ < 3) || ((__clang_major__ == 3) &&  (__clang_minor__ < 3)) */
+#endif  /* (__clang_major__ >=  16) || (__clang_major__ < 3) || ((__clang_major__ == 3) &&  (__clang_minor__ < 3)) */
 
 #endif /* defined(__clang__) && !defined(__ibmxl_vrm__) && !defined(__ICC) && !defined(__HORIZON__) && !defined(__APPLE__) */
 

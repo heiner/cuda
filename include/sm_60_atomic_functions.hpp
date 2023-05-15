@@ -58,7 +58,7 @@
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
 
 /*******************************************************************************
 *                                                                              *

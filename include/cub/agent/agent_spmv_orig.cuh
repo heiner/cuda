@@ -115,7 +115,7 @@ template <
     typename    OffsetT,                    ///< Signed integer type for sequence offsets
     bool        HAS_ALPHA,                  ///< Whether the input parameter \p alpha is 1
     bool        HAS_BETA,                   ///< Whether the input parameter \p beta is 0
-    int         PTX_ARCH = CUB_PTX_ARCH>    ///< PTX compute capability
+    int         LEGACY_PTX_ARCH = 0>        ///< PTX compute capability (unused)
 struct AgentSpmv
 {
     //---------------------------------------------------------------------
@@ -202,11 +202,14 @@ struct AgentSpmv
     /// Merge item type (either a non-zero value or a row-end offset)
     union MergeItem
     {
-        // Value type to pair with index type OffsetT (NullType if loading values directly during merge)
-        typedef typename If<AgentSpmvPolicyT::DIRECT_LOAD_NONZEROS, NullType, ValueT>::Type MergeValueT;
+      // Value type to pair with index type OffsetT
+      // (NullType if loading values directly during merge)
+      using MergeValueT =
+        cub::detail::conditional_t<
+          AgentSpmvPolicyT::DIRECT_LOAD_NONZEROS, NullType, ValueT>;
 
-        OffsetT     row_end_offset;
-        MergeValueT nonzero;
+      OffsetT row_end_offset;
+      MergeValueT nonzero;
     };
 
     /// Shared memory type required by this thread block

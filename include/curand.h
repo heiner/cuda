@@ -72,9 +72,9 @@ extern "C" {
 #endif /* __cplusplus */
 
 #define CURAND_VER_MAJOR 10
-#define CURAND_VER_MINOR 2
-#define CURAND_VER_PATCH 9
-#define CURAND_VER_BUILD 55
+#define CURAND_VER_MINOR 3
+#define CURAND_VER_PATCH 2
+#define CURAND_VER_BUILD 56
 #define CURAND_VERSION (CURAND_VER_MAJOR * 1000 + \
                         CURAND_VER_MINOR *  100 + \
                         CURAND_VER_PATCH)

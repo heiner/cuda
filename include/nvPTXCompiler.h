@@ -1,7 +1,7 @@
 /*
  * NVIDIA_COPYRIGHT_BEGIN
  *
- * Copyright (c) 2016-2020, NVIDIA CORPORATION.  All rights reserved.
+ * Copyright (c) 2016-2022, NVIDIA CORPORATION.  All rights reserved.
  *
  * NVIDIA CORPORATION and its licensors retain all intellectual property
  * and proprietary rights in and to this software, related documentation
@@ -79,6 +79,9 @@ typedef enum {
     /* Indicates that the PTX version encountered in the PTX is not */
     /* supported by the current compiler */
     NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION = 7,
+
+    /* Indicates that device side sync is not supported by the SM version */
+    NVPTXCOMPILE_ERROR_UNSUPPORTED_DEVSIDE_SYNC = 8,
 } nvPTXCompileResult;
 
 /* ----------------------------- PTX Compiler APIs ---------------------------- */
@@ -168,6 +171,7 @@ nvPTXCompileResult nvPTXCompilerDestroy (nvPTXCompilerHandle *compiler);
  *   - \link #nvPTXCompileResult NVPTXCOMPILE_ERROR_INVALID_PROGRAM_HANDLE \endlink
  *   - \link #nvPTXCompileResult NVPTXCOMPILE_ERROR_COMPILATION_FAILURE  \endlink
  *   - \link #nvPTXCompileResult NVPTXCOMPILE_ERROR_UNSUPPORTED_PTX_VERSION  \endlink
+ *   - \link #nvPTXCompileResult NVPTXCOMPILE_ERROR_UNSUPPORTED_DEVSIDE_SYNC \endlink
  *
  */
 nvPTXCompileResult nvPTXCompilerCompile (nvPTXCompilerHandle compiler, int numCompileOptions, const char* const * compileOptions);

@@ -75,8 +75,12 @@ namespace __detail_ap {
     return (__a > __b) ? __a : __b;
   }
 
-// GCC-7 and below do not properly assume the required number of bits for enumerations
-#if defined(__GNUC__) && __GNUC__ < 8
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61414
+// Specifically search for 8.4 and 9.3 and above to guarantee uint64_t enum.
+#if defined(__GNUC__) && ( \
+    ((_GNUC_VER < 804)) || \
+    ((_GNUC_VER < 903))    \
+  )
 # define _LIBCUDACXX_AP_ENUM_TYPE_ANNOTATION
 #else
 # define _LIBCUDACXX_AP_ENUM_TYPE_ANNOTATION : uint64_t
@@ -155,6 +159,7 @@ namespace __detail_ap {
           std::uint64_t(__ap_reserved3)           << 63;
       }
 
+      inline
       __host__ __device__
       std::uint64_t __get_descriptor_non_cexpr() const noexcept { return *reinterpret_cast<const std::uint64_t*>(this); }
 
@@ -256,6 +261,7 @@ namespace __detail_ap {
           std::uint64_t(__ap_reserved2)           << 63;
       }
 
+      inline
       __host__ __device__
       std::uint64_t __get_descriptor_non_cexpr() const noexcept { return *reinterpret_cast<const std::uint64_t*>(this); }
 

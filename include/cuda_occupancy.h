@@ -435,6 +435,8 @@ struct cudaOccFuncAttributes {
                             // usable by the kernel
                             // This limit is set using the cuFuncSetAttribute
                             // function.
+
+    int numBlockBarriers;   // Number of block barriers used (default to 1)
 #ifdef __cplusplus
     // This structure can be converted from a cudaFuncAttributes structure for
     // users that use this header in their CUDA applications.
@@ -471,7 +473,8 @@ struct cudaOccFuncAttributes {
         sharedSizeBytes     (attr.sharedSizeBytes),
         partitionedGCConfig (PARTITIONED_GC_OFF),
         shmemLimitConfig    (FUNC_SHMEM_LIMIT_OPTIN),
-        maxDynamicSharedSizeBytes (attr.maxDynamicSharedSizeBytes)
+        maxDynamicSharedSizeBytes (attr.maxDynamicSharedSizeBytes),
+        numBlockBarriers    (1)
     {}
 
     __OCC_INLINE
@@ -481,7 +484,8 @@ struct cudaOccFuncAttributes {
         sharedSizeBytes     (0),
         partitionedGCConfig (PARTITIONED_GC_OFF),
         shmemLimitConfig    (FUNC_SHMEM_LIMIT_DEFAULT),
-        maxDynamicSharedSizeBytes (0)
+        maxDynamicSharedSizeBytes (0),
+        numBlockBarriers    (0)
     {}
 #endif
 };
@@ -526,7 +530,8 @@ typedef enum cudaOccLimitingFactor_enum {
     OCC_LIMIT_WARPS         = 0x01, // - warps available
     OCC_LIMIT_REGISTERS     = 0x02, // - registers available
     OCC_LIMIT_SHARED_MEMORY = 0x04, // - shared memory available
-    OCC_LIMIT_BLOCKS        = 0x08  // - blocks available
+    OCC_LIMIT_BLOCKS        = 0x08, // - blocks available
+    OCC_LIMIT_BARRIERS      = 0x10  // - barrier available
 } cudaOccLimitingFactor;
 
 /**
@@ -548,6 +553,7 @@ struct cudaOccResult {
     int blockLimitWarps;               // Occupancy due to block size limit
     int blockLimitBlocks;              // Occupancy due to maximum number of blocks
                                        // managable per SM
+    int blockLimitBarriers;            // Occupancy due to block barrier usage
     int allocatedRegistersPerBlock;    // Actual number of registers allocated per
                                        // block
     size_t allocatedSharedMemPerBlock; // Actual size of shared memory allocated
@@ -574,16 +580,8 @@ typedef enum cudaOccPartitionedGCSupport_enum {
 /**
  * Max compute capability supported
  */
-
-
-
-
-
-
-
-#define __CUDA_OCC_MAJOR__ 8
-#define __CUDA_OCC_MINOR__ 6
-
+#define __CUDA_OCC_MAJOR__ 9
+#define __CUDA_OCC_MINOR__ 0
 
 //////////////////////////////////////////
 //    Mathematical Helper Functions     //
@@ -623,9 +621,7 @@ static __OCC_INLINE cudaOccError cudaOccSMemAllocationGranularity(int *limit, co
             value = 256;
             break;
         case 8:
-
-
-
+        case 9:
             value = 128;
             break;
         default:
@@ -652,9 +648,7 @@ static __OCC_INLINE cudaOccError cudaOccRegAllocationMaxPerThread(int *limit, co
             break;
         case 7:
         case 8:
-
-
-
+        case 9:
             value = 256;
             break;
         default:
@@ -679,9 +673,7 @@ static __OCC_INLINE cudaOccError cudaOccRegAllocationGranularity(int *limit, con
         case 6:
         case 7:
         case 8:
-
-
-
+        case 9:
             value = 256;
             break;
         default:
@@ -705,9 +697,7 @@ static __OCC_INLINE cudaOccError cudaOccSubPartitionsPerMultiprocessor(int *limi
         case 5:
         case 7:
         case 8:
-
-
-
+        case 9:
             value = 4;
             break;
         case 6:
@@ -747,21 +737,16 @@ static __OCC_INLINE cudaOccError cudaOccMaxBlocksPerMultiprocessor(int* limit, c
             if (properties->computeMinor == 0) {
                 value = 32;
             }
-
-
-
-
-
-
+            else if (properties->computeMinor == 9) {
+                value = 24;
+            }
             else {
                 value = 16;
             }
             break;
-
-
-
-
-
+        case 9:
+            value = 32;
+            break;
         default:
             return CUDA_OCC_ERROR_UNKNOWN_DEVICE;
     }
@@ -876,44 +861,42 @@ static __OCC_INLINE cudaOccError cudaOccAlignUpShmemSizeVoltaPlus(size_t *shMemS
             }
         }
         break;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    case 9: {
+        if      (size == 0) {
+            *shMemSize = 0;
+        }
+        else if (size <= 8 * 1024) {
+            *shMemSize = 8 * 1024;
+        }
+        else if (size <= 16 * 1024) {
+            *shMemSize = 16 * 1024;
+        }
+        else if (size <= 32 * 1024) {
+            *shMemSize = 32 * 1024;
+        }
+        else if (size <= 64 * 1024) {
+            *shMemSize = 64 * 1024;
+        }
+        else if (size <= 100 * 1024) {
+            *shMemSize = 100 * 1024;
+        }
+        else if (size <= 132 * 1024) {
+            *shMemSize = 132 * 1024;
+        }
+        else if (size <= 164 * 1024) {
+            *shMemSize = 164 * 1024;
+        }
+        else if (size <= 196 * 1024) {
+            *shMemSize = 196 * 1024;
+        }
+        else if (size <= 228 * 1024) {
+            *shMemSize = 228 * 1024;
+        }
+        else {
+            return CUDA_OCC_ERROR_INVALID_INPUT;
+        }
+        break;
+    }
     default:
         return CUDA_OCC_ERROR_UNKNOWN_DEVICE;
     }
@@ -1051,9 +1034,7 @@ static __OCC_INLINE cudaOccError cudaOccSMemPerBlock(size_t *limit, const cudaOc
             break;
         case 7:
         case 8:
-
-
-
+        case 9:
             switch (shmemLimitConfig) {
                 default:
                 case FUNC_SHMEM_LIMIT_DEFAULT:
@@ -1471,6 +1452,27 @@ cudaOccError cudaOccMaxBlocksPerSMRegsLimit(
     return status;
 }
 
+// Barrier limit
+//
+static __OCC_INLINE cudaOccError cudaOccMaxBlocksPerSMBlockBarrierLimit(
+    int                         *limit,
+    int                          ctaLimitBlocks,
+    const cudaOccFuncAttributes *attributes)
+{
+    cudaOccError status = CUDA_OCC_SUCCESS;
+    int numBarriersAvailable = ctaLimitBlocks * 2;
+    int numBarriersUsed = attributes->numBlockBarriers;
+    int maxBlocks = INT_MAX;
+
+    if (numBarriersUsed) {
+        maxBlocks = numBarriersAvailable / numBarriersUsed;
+    }
+
+    *limit = maxBlocks;
+
+    return status;
+}
+
 ///////////////////////////////////
 //      API Implementations      //
 ///////////////////////////////////
@@ -1489,6 +1491,7 @@ cudaOccError cudaOccMaxActiveBlocksPerMultiprocessor(
     int          ctaLimitBlocks  = 0;
     int          ctaLimitSMem    = 0;
     int          ctaLimitRegs    = 0;
+    int          ctaLimitBars    = 0;
     int          ctaLimit        = 0;
     unsigned int limitingFactors = 0;
     
@@ -1579,8 +1582,6 @@ cudaOccError cudaOccMaxActiveBlocksPerMultiprocessor(
     //
     ctaLimit = __occMin(ctaLimitRegs, __occMin(ctaLimitSMem, __occMin(ctaLimitWarps, ctaLimitBlocks)));
 
-    // Fill in the return values
-    //
     // Determine occupancy limiting factors
     //
     if (ctaLimit == ctaLimitWarps) {
@@ -1595,12 +1596,40 @@ cudaOccError cudaOccMaxActiveBlocksPerMultiprocessor(
     if (ctaLimit == ctaLimitBlocks) {
         limitingFactors |= OCC_LIMIT_BLOCKS;
     }
+
+    // For Hopper onwards compute the limits to occupancy based on block barrier count
+    //
+    if (properties->computeMajor >= 9 && attributes->numBlockBarriers > 0) {
+        // Limits due to barrier/SM
+        //
+        status = cudaOccMaxBlocksPerSMBlockBarrierLimit(&ctaLimitBars, ctaLimitBlocks, attributes);
+        if (status != CUDA_OCC_SUCCESS) {
+            return status;
+        }
+
+        // Recompute overall limit based on barrier/SM
+        //
+        ctaLimit = __occMin(ctaLimitBars, ctaLimit);
+
+        // Determine if this is occupancy limiting factor
+        //
+        if (ctaLimit == ctaLimitBars) {
+            limitingFactors |= OCC_LIMIT_BARRIERS;
+        }
+    }
+    else {
+        ctaLimitBars = INT_MAX;
+    }
+
+    // Fill in the return values
+    //
     result->limitingFactors = limitingFactors;
 
     result->blockLimitRegs      = ctaLimitRegs;
     result->blockLimitSharedMem = ctaLimitSMem;
     result->blockLimitWarps     = ctaLimitWarps;
     result->blockLimitBlocks    = ctaLimitBlocks;
+    result->blockLimitBarriers  = ctaLimitBars;
     result->partitionedGCConfig = gcConfig;
 
     // Final occupancy

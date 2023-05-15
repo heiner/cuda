@@ -39,6 +39,9 @@
 #include "../../util_type.cuh"
 
 #include <stdint.h>
+#include <type_traits>
+
+#include <nv/target>
 
 CUB_NAMESPACE_BEGIN
 
@@ -51,7 +54,7 @@ CUB_NAMESPACE_BEGIN
 template <
     typename    T,                      ///< Data type being reduced
     int         LOGICAL_WARP_THREADS,   ///< Number of threads per logical warp
-    int         PTX_ARCH>               ///< The PTX compute capability for which to to specialize this collective
+    int         LEGACY_PTX_ARCH = 0>    ///< The PTX compute capability for which to to specialize this collective
 struct WarpReduceShfl
 {
     static_assert(PowerOfTwo<LOGICAL_WARP_THREADS>::VALUE,
@@ -64,16 +67,16 @@ struct WarpReduceShfl
     enum
     {
         /// Whether the logical warp size and the PTX warp size coincide
-        IS_ARCH_WARP = (LOGICAL_WARP_THREADS == CUB_WARP_THREADS(PTX_ARCH)),
+        IS_ARCH_WARP = (LOGICAL_WARP_THREADS == CUB_WARP_THREADS(0)),
 
         /// The number of warp reduction steps
         STEPS = Log2<LOGICAL_WARP_THREADS>::VALUE,
 
         /// Number of logical warps in a PTX warp
-        LOGICAL_WARPS = CUB_WARP_THREADS(PTX_ARCH) / LOGICAL_WARP_THREADS,
+        LOGICAL_WARPS = CUB_WARP_THREADS(0) / LOGICAL_WARP_THREADS,
 
         /// The 5-bit SHFL mask for logically splitting warps into sub-segments starts 8-bits up
-        SHFL_C = (CUB_WARP_THREADS(PTX_ARCH) - LOGICAL_WARP_THREADS) << 8
+        SHFL_C = (CUB_WARP_THREADS(0) - LOGICAL_WARP_THREADS) << 8
 
     };
 
@@ -114,7 +117,7 @@ struct WarpReduceShfl
         TempStorage &/*temp_storage*/)
         : lane_id(static_cast<int>(LaneId()))
         , warp_id(IS_ARCH_WARP ? 0 : (lane_id / LOGICAL_WARP_THREADS))
-        , member_mask(WarpMask<LOGICAL_WARP_THREADS, PTX_ARCH>(warp_id))
+        , member_mask(WarpMask<LOGICAL_WARP_THREADS>(warp_id))
     {
         if (!IS_ARCH_WARP)
         {
@@ -455,6 +458,108 @@ struct WarpReduceShfl
     //---------------------------------------------------------------------
     // Reduction operations
     //---------------------------------------------------------------------
+    template <typename ReductionOp>
+    __device__ __forceinline__ T ReduceImpl(
+        Int2Type<0>     /* all_lanes_valid */, 
+        T               input,                  ///< [in] Calling thread's input
+        int             valid_items,            ///< [in] Total number of valid items across the logical warp
+        ReductionOp     reduction_op)           ///< [in] Binary reduction operator
+    {
+        int last_lane = valid_items - 1;
+
+        T output = input;
+
+        // Template-iterate reduction steps
+        ReduceStep(output, reduction_op, last_lane, Int2Type<0>());
+
+        return output;
+    }
+
+    template <typename ReductionOp>
+    __device__ __forceinline__ T ReduceImpl(
+        Int2Type<1>     /* all_lanes_valid */, 
+        T               input,                  ///< [in] Calling thread's input
+        int             /* valid_items */,      ///< [in] Total number of valid items across the logical warp
+        ReductionOp     reduction_op)           ///< [in] Binary reduction operator
+    {
+        int last_lane = LOGICAL_WARP_THREADS - 1;
+
+        T output = input;
+
+        // Template-iterate reduction steps
+        ReduceStep(output, reduction_op, last_lane, Int2Type<0>());
+
+        return output;
+    }
+
+    // Warp reduce functions are not supported by nvc++ (NVBug 3694682)
+#ifndef _NVHPC_CUDA 
+    template <class U = T>
+    __device__ __forceinline__ 
+    typename std::enable_if<
+               std::is_same<int, U>::value 
+            || std::is_same<unsigned int, U>::value, T>::type
+    ReduceImpl(Int2Type<1> /* all_lanes_valid */,
+               T input,
+               int /* valid_items */,
+               cub::Sum /* reduction_op */)
+    {
+      T output = input;
+
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_add_sync(member_mask, input);),
+                   (output = ReduceImpl<cub::Sum>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Sum{});));
+
+      return output;
+    }
+
+    template <class U = T>
+    __device__ __forceinline__ 
+    typename std::enable_if<
+               std::is_same<int, U>::value 
+            || std::is_same<unsigned int, U>::value, T>::type
+    ReduceImpl(Int2Type<1> /* all_lanes_valid */,
+               T input,
+               int /* valid_items */,
+               cub::Min /* reduction_op */)
+    {
+      T output = input;
+
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_min_sync(member_mask, input);),
+                   (output = ReduceImpl<cub::Min>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Min{});));
+
+      return output;
+    }
+
+    template <class U = T>
+    __device__ __forceinline__ 
+    typename std::enable_if<
+               std::is_same<int, U>::value 
+            || std::is_same<unsigned int, U>::value, T>::type
+    ReduceImpl(Int2Type<1> /* all_lanes_valid */,
+               T input,
+               int /* valid_items */,
+               cub::Max /* reduction_op */)
+    {
+      T output = input;
+
+      NV_IF_TARGET(NV_PROVIDES_SM_80,
+                   (output = __reduce_max_sync(member_mask, input);),
+                   (output = ReduceImpl<cub::Max>(Int2Type<1>{},
+                                                  input,
+                                                  LOGICAL_WARP_THREADS,
+                                                  cub::Max{});));
+
+      return output;
+    }
+#endif // _NVHPC_CUDA 
 
     /// Reduction
     template <
@@ -465,23 +570,8 @@ struct WarpReduceShfl
         int             valid_items,            ///< [in] Total number of valid items across the logical warp
         ReductionOp     reduction_op)           ///< [in] Binary reduction operator
     {
-        int last_lane = (ALL_LANES_VALID) ?
-                            LOGICAL_WARP_THREADS - 1 :
-                            valid_items - 1;
-
-        T output = input;
-
-//        // Iterate reduction steps
-//        #pragma unroll
-//        for (int STEP = 0; STEP < STEPS; STEP++)
-//        {
-//            output = ReduceStep(output, reduction_op, last_lane, 1 << STEP, Int2Type<IsInteger<T>::IS_SMALL_UNSIGNED>());
-//        }
-
-        // Template-iterate reduction steps
-        ReduceStep(output, reduction_op, last_lane, Int2Type<0>());
-
-        return output;
+        return ReduceImpl(
+            Int2Type<ALL_LANES_VALID>{}, input, valid_items, reduction_op);
     }
 
 

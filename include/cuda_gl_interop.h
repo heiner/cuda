@@ -129,6 +129,7 @@ enum cudaGLDeviceList
  * ::cudaSuccess,
  * ::cudaErrorNoDevice,
  * ::cudaErrorInvalidGraphicsContext,
+ * ::cudaErrorOperatingSystem,
  * ::cudaErrorUnknown
  *
  * \note This function is not supported on Mac OS X.
@@ -190,6 +191,7 @@ extern __host__ cudaError_t CUDARTAPI cudaGLGetDevices(unsigned int *pCudaDevice
  * ::cudaErrorInvalidDevice,
  * ::cudaErrorInvalidValue,
  * ::cudaErrorInvalidResourceHandle,
+ * ::cudaErrorOperatingSystem,
  * ::cudaErrorUnknown
  * \notefnerr
  *
@@ -228,6 +230,7 @@ extern __host__ cudaError_t CUDARTAPI cudaGraphicsGLRegisterImage(struct cudaGra
  * ::cudaErrorInvalidDevice,
  * ::cudaErrorInvalidValue,
  * ::cudaErrorInvalidResourceHandle,
+ * ::cudaErrorOperatingSystem,
  * ::cudaErrorUnknown
  * \notefnerr
  *
@@ -291,6 +294,9 @@ enum cudaGLMapFlags
  * This function is deprecated and should no longer be used.  It is
  * no longer necessary to associate a CUDA device with an OpenGL
  * context in order to achieve maximum interoperability performance.
+ *
+ * This function will immediately initialize the primary context on 
+ * \p device if needed.
  *
  * \param device - Device to use for OpenGL interoperability
  *

@@ -1,4 +1,4 @@
- /* Copyright 2009-2021 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
+ /* Copyright 2009-2022 NVIDIA CORPORATION & AFFILIATES.  All rights reserved. 
   * 
   * NOTICE TO LICENSEE: 
   * 
@@ -15178,8 +15178,15 @@ nppiCrossCorrFull_NormLevelAdvanced_16u32f_C4R_Ctx(const Npp16u * pSrc, int nSrc
  * @{
  */
 /** 
- * Buffer size (in bytes) for nppiCrossCorrFull_NormLevelAdvanced functions.
- * For common parameter descriptions, see \ref CommonGetAdvancedHostScratchBufferSizeParameters.
+ * Buffer size (in bytes) for nppiCrossCorrFull_NormLevelAdvanced functions. 
+ *  
+ * \param oSrcRoiSize \ref roi_specification.
+ * \param oTplRoiSize \ref roi_specification.
+ * \param nSizeofDstData sizeof(destination data type (usually Npp32f)).
+ * \param nSrcChannels number of source image color channels. 
+ * \param hpBufferSize Required buffer size. Important: hpBufferSize is a 
+ *        <em>host pointer.</em> \ref general_scratch_buffer.
+ * \return \ref image_data_error_codes, \ref roi_error_codes
  */
 NppStatus 
 nppiCrossCorrFull_NormLevel_GetAdvancedScratchBufferSize(NppiSize oSrcRoiSize, NppiSize oTplRoiSize, 
@@ -15344,11 +15351,19 @@ nppiCrossCorrSame_NormLevelAdvanced_16u32f_C4R_Ctx(const Npp16u * pSrc, int nSrc
 
 /** @name SameNormLevelGetAdvancedScratchBufferHostSize 
  * Companion primitives for computing the device buffer size (in bytes) required by the CrossCorrSame_NormLevelAdvanced primitives.
+ *  
  * @{
  */
 /** 
  * Buffer size (in bytes) for nppiCrossCorrSame_NormLevelAdvanced functions.
- * For common parameter descriptions, see \ref CommonGetAdvancedScratchBufferHostSizeParameters.
+ *  
+ * \param oSrcRoiSize \ref roi_specification.
+ * \param oTplRoiSize \ref roi_specification.
+ * \param nSizeofDstData sizeof(destination data type (usually Npp32f)).
+ * \param nSrcChannels number of source image color channels. 
+ * \param hpBufferSize Required buffer size. Important: hpBufferSize is a 
+ *        <em>host pointer.</em> \ref general_scratch_buffer.
+ * \return \ref image_data_error_codes, \ref roi_error_codes
  */
 NppStatus 
 nppiCrossCorrSame_NormLevel_GetAdvancedScratchBufferSize(NppiSize oSrcRoiSize, NppiSize oTplRoiSize, 
@@ -15520,7 +15535,14 @@ nppiCrossCorrValid_NormLevelAdvanced_16u32f_C4R_Ctx(const Npp16u * pSrc, int nSr
  */
 /** 
  * Buffer size (in bytes) for nppiCrossCorrValid_NormLevelAdvanced functions.
- * For common parameter descriptions, see \ref CommonGetAdvancedScratchBufferHostSizeParameters.
+*  
+ * \param oSrcRoiSize \ref roi_specification.
+ * \param oTplRoiSize \ref roi_specification.
+ * \param nSizeofDstData sizeof(destination data type (usually Npp32f)).
+ * \param nSrcChannels number of source image color channels. 
+ * \param hpBufferSize Required buffer size. Important: hpBufferSize is a 
+ *        <em>host pointer.</em> \ref general_scratch_buffer.
+ * \return \ref image_data_error_codes, \ref roi_error_codes
  */
 NppStatus 
 nppiCrossCorrValid_NormLevel_GetAdvancedScratchBufferSize(NppiSize oSrcRoiSize, NppiSize oTplRoiSize, 

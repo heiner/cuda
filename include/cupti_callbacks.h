@@ -129,7 +129,8 @@ typedef enum {
    * Domain containing callback points for NVTX API functions.
    */
   CUPTI_CB_DOMAIN_NVTX              = 5,
-  CUPTI_CB_DOMAIN_SIZE              = 6,
+  CUPTI_CB_DOMAIN_SIZE,
+
   CUPTI_CB_DOMAIN_FORCE_INT         = 0x7fffffff
 } CUpti_CallbackDomain;
 
@@ -253,6 +254,7 @@ typedef enum {
   CUPTI_CBID_SYNCHRONIZE_SIZE,
   CUPTI_CBID_SYNCHRONIZE_FORCE_INT                = 0x7fffffff
 } CUpti_CallbackIdSync;
+
 
 /**
  * \brief Data passed into a runtime or driver API callback function.

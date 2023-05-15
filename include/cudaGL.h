@@ -51,11 +51,7 @@
 #define CUDAGL_H
 
 #include <cuda.h>
-#ifdef __APPLE__
-#include <OpenGL/gl.h>
-#else
 #include <GL/gl.h>
-#endif
 
 #if defined(__CUDA_API_VERSION_INTERNAL) || defined(__DOXYGEN_ONLY__) || defined(CUDA_ENABLE_DEPRECATED)
 #define __CUDA_DEPRECATED
@@ -143,6 +139,7 @@ typedef void* HGPUNV;
  * ::CUDA_ERROR_INVALID_HANDLE,
  * ::CUDA_ERROR_ALREADY_MAPPED,
  * ::CUDA_ERROR_INVALID_CONTEXT,
+ * ::CUDA_ERROR_OPERATING_SYSTEM
  * \notefnerr
  *
  * \sa 
@@ -201,6 +198,7 @@ CUresult CUDAAPI cuGraphicsGLRegisterBuffer(CUgraphicsResource *pCudaResource, G
  * ::CUDA_ERROR_INVALID_HANDLE,
  * ::CUDA_ERROR_ALREADY_MAPPED,
  * ::CUDA_ERROR_INVALID_CONTEXT,
+ * ::CUDA_ERROR_OPERATING_SYSTEM
  * \notefnerr
  *
  * \sa 
@@ -274,9 +272,9 @@ typedef enum CUGLDeviceList_enum {
  * ::CUDA_ERROR_NO_DEVICE,
  * ::CUDA_ERROR_INVALID_VALUE,
  * ::CUDA_ERROR_INVALID_CONTEXT,
- * ::CUDA_ERROR_INVALID_GRAPHICS_CONTEXT
+ * ::CUDA_ERROR_INVALID_GRAPHICS_CONTEXT,
+ * ::CUDA_ERROR_OPERATING_SYSTEM
  *
- * \note This function is not supported on Mac OS X.
  * \notefnerr
  *
  * \sa

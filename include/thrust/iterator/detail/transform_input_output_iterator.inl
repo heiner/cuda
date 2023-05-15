@@ -1,5 +1,5 @@
 /*
- *  Copyright 2020 NVIDIA Corporation
+ *  Copyright 2020-2021 NVIDIA Corporation
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  *  limitations under the License.
  */
 
-#include <thrust/detail/config.h>
+#pragma once
 
+#include <thrust/detail/config.h>
 #include <thrust/iterator/iterator_adaptor.h>
+#include <thrust/detail/type_traits.h>
 
 THRUST_NAMESPACE_BEGIN
 
 template <typename InputFunction, typename OutputFunction, typename Iterator>
   class transform_input_output_iterator;
 
-namespace detail 
+namespace detail
 {
 
 // Proxy reference that invokes InputFunction when reading from and
@@ -33,12 +35,7 @@ template <typename InputFunction, typename OutputFunction, typename Iterator>
 {
   using iterator_value_type = typename thrust::iterator_value<Iterator>::type;
 
-  // std::result_of is deprecated in 2017, replace with std::invoke_result
-#if THRUST_CPP_DIALECT < 2017
-  using Value = typename std::result_of<InputFunction(iterator_value_type)>::type;
-#else
-  using Value = std::invoke_result_t<InputFunction, iterator_value_type>;
-#endif
+  using Value = invoke_result_t<InputFunction, iterator_value_type>;
 
   public:
     __host__ __device__
@@ -91,12 +88,7 @@ public:
     <
         transform_input_output_iterator<InputFunction, OutputFunction, Iterator>
       , Iterator
-    // std::result_of is deprecated in 2017, replace with std::invoke_result
-#if THRUST_CPP_DIALECT < 2017
-      , typename std::result_of<InputFunction(iterator_value_type)>::type
-#else
-      , std::invoke_result_t<InputFunction, iterator_value_type>
-#endif
+      , detail::invoke_result_t<InputFunction, iterator_value_type>
       , thrust::use_default
       , thrust::use_default
       , transform_input_output_iterator_proxy<InputFunction, OutputFunction, Iterator>

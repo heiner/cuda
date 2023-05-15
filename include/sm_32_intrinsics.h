@@ -58,7 +58,7 @@
 
 #if defined(__cplusplus) && defined(__CUDACC__)
 
-#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
+#if defined(_NVHPC_CUDA) || !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 320
 
 /*******************************************************************************
 *                                                                              *
@@ -68,11 +68,11 @@
 
 #include "cuda_runtime_api.h"
 
-#ifndef __CUDA_ARCH__
-#define __DEF_IF_HOST { }
-#else  /* !__CUDA_ARCH__ */
+#if defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA)
 #define __DEF_IF_HOST ;
-#endif /* __CUDA_ARCH__ */
+#else  /* defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA) */
+#define __DEF_IF_HOST { }
+#endif /* defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA) */
 
 
 /*******************************************************************************
@@ -497,14 +497,14 @@ __SM_32_INTRINSICS_DECL__ unsigned int __funnelshift_r(unsigned int lo, unsigned
 __SM_32_INTRINSICS_DECL__ unsigned int __funnelshift_rc(unsigned int lo, unsigned int hi, unsigned int shift) __DEF_IF_HOST
 
 
-#endif /* !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
+#endif /* _NVHPC_CUDA || !__CUDA_ARCH__ || __CUDA_ARCH__ >= 320 */
 
 #endif /* __cplusplus && __CUDACC__ */
 
 #undef __SM_32_INTRINSICS_DECL__
 
-#if !defined(__CUDACC_RTC__) && defined(__CUDA_ARCH__)
+#if !defined(__CUDACC_RTC__) && (defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA))
 #include "sm_32_intrinsics.hpp"
-#endif /* !__CUDACC_RTC__  && defined(__CUDA_ARCH__)  */
+#endif /* !defined(__CUDACC_RTC__) && (defined(__CUDA_ARCH__) || defined(_NVHPC_CUDA))  */
 
 #endif /* !__SM_32_INTRINSICS_H__ */

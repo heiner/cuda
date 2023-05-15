@@ -437,7 +437,22 @@ typedef enum CUpti_runtime_api_trace_cbid_enum {
     CUPTI_RUNTIME_TRACE_CBID_cudaGraphNodeGetEnabled_v11060                                = 427,
     CUPTI_RUNTIME_TRACE_CBID_cudaArrayGetMemoryRequirements_v11060                         = 428,
     CUPTI_RUNTIME_TRACE_CBID_cudaMipmappedArrayGetMemoryRequirements_v11060                = 429,
-    CUPTI_RUNTIME_TRACE_CBID_SIZE                                                          = 430,
+    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_v11060                                    = 430,
+    CUPTI_RUNTIME_TRACE_CBID_cudaLaunchKernelExC_ptsz_v11060                               = 431,
+    CUPTI_RUNTIME_TRACE_CBID_cudaOccupancyMaxPotentialClusterSize_v11070                   = 432,
+    CUPTI_RUNTIME_TRACE_CBID_cudaOccupancyMaxActiveClusters_v11070                         = 433,
+    CUPTI_RUNTIME_TRACE_CBID_cudaCreateTextureObject_v2_v11080                             = 434,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGetTextureObjectTextureDesc_v2_v11080                     = 435,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGraphInstantiateWithParams_v12000                         = 436,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGraphInstantiateWithParams_ptsz_v12000                    = 437,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGraphExecGetFlags_v12000                                  = 438,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGetKernel_v12000                                          = 439,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGetDeviceProperties_v2_v12000                             = 440,
+    CUPTI_RUNTIME_TRACE_CBID_cudaStreamGetId_v12000                                        = 441,
+    CUPTI_RUNTIME_TRACE_CBID_cudaStreamGetId_ptsz_v12000                                   = 442,
+    CUPTI_RUNTIME_TRACE_CBID_cudaGraphInstantiate_v12000                                   = 443,
+    CUPTI_RUNTIME_TRACE_CBID_cudaInitDevice_v12000                                         = 444,
+    CUPTI_RUNTIME_TRACE_CBID_SIZE                                                          = 445,
     CUPTI_RUNTIME_TRACE_CBID_FORCE_INT                                                     = 0x7fffffff
 } CUpti_runtime_api_trace_cbid;
 

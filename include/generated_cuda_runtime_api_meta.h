@@ -98,10 +98,10 @@ typedef struct cudaGetDeviceCount_v3020_params_st {
     int *count;
 } cudaGetDeviceCount_v3020_params;
 
-typedef struct cudaGetDeviceProperties_v3020_params_st {
+typedef struct cudaGetDeviceProperties_v2_v12000_params_st {
     struct cudaDeviceProp *prop;
     int device;
-} cudaGetDeviceProperties_v3020_params;
+} cudaGetDeviceProperties_v2_v12000_params;
 
 typedef struct cudaDeviceGetAttribute_v5000_params_st {
     int *value;
@@ -141,6 +141,12 @@ typedef struct cudaChooseDevice_v3020_params_st {
     int *device;
     const struct cudaDeviceProp *prop;
 } cudaChooseDevice_v3020_params;
+
+typedef struct cudaInitDevice_v12000_params_st {
+    int device;
+    unsigned int deviceFlags;
+    unsigned int flags;
+} cudaInitDevice_v12000_params;
 
 typedef struct cudaSetDevice_v3020_params_st {
     int device;
@@ -188,6 +194,11 @@ typedef struct cudaStreamGetFlags_ptsz_v7000_params_st {
     unsigned int *flags;
 } cudaStreamGetFlags_ptsz_v7000_params;
 
+typedef struct cudaStreamGetId_ptsz_v12000_params_st {
+    cudaStream_t hStream;
+    unsigned long long *streamId;
+} cudaStreamGetId_ptsz_v12000_params;
+
 typedef struct cudaStreamCopyAttributes_ptsz_v11000_params_st {
     cudaStream_t dst;
     cudaStream_t src;
@@ -195,14 +206,14 @@ typedef struct cudaStreamCopyAttributes_ptsz_v11000_params_st {
 
 typedef struct cudaStreamGetAttribute_ptsz_v11000_params_st {
     cudaStream_t hStream;
-    enum cudaStreamAttrID attr;
-    union cudaStreamAttrValue *value_out;
+    cudaStreamAttrID attr;
+    cudaStreamAttrValue *value_out;
 } cudaStreamGetAttribute_ptsz_v11000_params;
 
 typedef struct cudaStreamSetAttribute_ptsz_v11000_params_st {
     cudaStream_t hStream;
-    enum cudaStreamAttrID attr;
-    const union cudaStreamAttrValue *value;
+    cudaStreamAttrID attr;
+    const cudaStreamAttrValue *value;
 } cudaStreamSetAttribute_ptsz_v11000_params;
 
 typedef struct cudaStreamDestroy_v5050_params_st {
@@ -255,12 +266,6 @@ typedef struct cudaStreamIsCapturing_ptsz_v10000_params_st {
     cudaStream_t stream;
     enum cudaStreamCaptureStatus *pCaptureStatus;
 } cudaStreamIsCapturing_ptsz_v10000_params;
-
-typedef struct cudaStreamGetCaptureInfo_ptsz_v10010_params_st {
-    cudaStream_t stream;
-    enum cudaStreamCaptureStatus *pCaptureStatus;
-    unsigned long long *pId;
-} cudaStreamGetCaptureInfo_ptsz_v10010_params;
 
 typedef struct cudaStreamGetCaptureInfo_v2_ptsz_v11030_params_st {
     cudaStream_t stream;
@@ -369,6 +374,12 @@ typedef struct cudaLaunchKernel_ptsz_v7000_params_st {
     cudaStream_t stream;
 } cudaLaunchKernel_ptsz_v7000_params;
 
+typedef struct cudaLaunchKernelExC_ptsz_v11060_params_st {
+    const cudaLaunchConfig_t *config;
+    const void *func;
+    void **args;
+} cudaLaunchKernelExC_ptsz_v11060_params;
+
 typedef struct cudaLaunchCooperativeKernel_ptsz_v9000_params_st {
     const void *func;
     dim3 gridDim;
@@ -432,6 +443,18 @@ typedef struct cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_v7000_para
     size_t dynamicSMemSize;
     unsigned int flags;
 } cudaOccupancyMaxActiveBlocksPerMultiprocessorWithFlags_v7000_params;
+
+typedef struct cudaOccupancyMaxPotentialClusterSize_v11070_params_st {
+    int *clusterSize;
+    const void *func;
+    const cudaLaunchConfig_t *launchConfig;
+} cudaOccupancyMaxPotentialClusterSize_v11070_params;
+
+typedef struct cudaOccupancyMaxActiveClusters_v11070_params_st {
+    int *numClusters;
+    const void *func;
+    const cudaLaunchConfig_t *launchConfig;
+} cudaOccupancyMaxActiveClusters_v11070_params;
 
 typedef struct cudaMallocManaged_v6000_params_st {
     void **devPtr;
@@ -1009,61 +1032,6 @@ typedef struct cudaGraphicsResourceGetMappedMipmappedArray_v5000_params_st {
     cudaGraphicsResource_t resource;
 } cudaGraphicsResourceGetMappedMipmappedArray_v5000_params;
 
-typedef struct cudaBindTexture_v3020_params_st {
-    size_t *offset;
-    const struct textureReference *texref;
-    const void *devPtr;
-    const struct cudaChannelFormatDesc *desc;
-    size_t size;
-} cudaBindTexture_v3020_params;
-
-typedef struct cudaBindTexture2D_v3020_params_st {
-    size_t *offset;
-    const struct textureReference *texref;
-    const void *devPtr;
-    const struct cudaChannelFormatDesc *desc;
-    size_t width;
-    size_t height;
-    size_t pitch;
-} cudaBindTexture2D_v3020_params;
-
-typedef struct cudaBindTextureToArray_v3020_params_st {
-    const struct textureReference *texref;
-    cudaArray_const_t array;
-    const struct cudaChannelFormatDesc *desc;
-} cudaBindTextureToArray_v3020_params;
-
-typedef struct cudaBindTextureToMipmappedArray_v5000_params_st {
-    const struct textureReference *texref;
-    cudaMipmappedArray_const_t mipmappedArray;
-    const struct cudaChannelFormatDesc *desc;
-} cudaBindTextureToMipmappedArray_v5000_params;
-
-typedef struct cudaUnbindTexture_v3020_params_st {
-    const struct textureReference *texref;
-} cudaUnbindTexture_v3020_params;
-
-typedef struct cudaGetTextureAlignmentOffset_v3020_params_st {
-    size_t *offset;
-    const struct textureReference *texref;
-} cudaGetTextureAlignmentOffset_v3020_params;
-
-typedef struct cudaGetTextureReference_v3020_params_st {
-    const struct textureReference **texref;
-    const void *symbol;
-} cudaGetTextureReference_v3020_params;
-
-typedef struct cudaBindSurfaceToArray_v3020_params_st {
-    const struct surfaceReference *surfref;
-    cudaArray_const_t array;
-    const struct cudaChannelFormatDesc *desc;
-} cudaBindSurfaceToArray_v3020_params;
-
-typedef struct cudaGetSurfaceReference_v3020_params_st {
-    const struct surfaceReference **surfref;
-    const void *symbol;
-} cudaGetSurfaceReference_v3020_params;
-
 typedef struct cudaGetChannelDesc_v3020_params_st {
     struct cudaChannelFormatDesc *desc;
     cudaArray_const_t array;
@@ -1155,14 +1123,14 @@ typedef struct cudaGraphKernelNodeCopyAttributes_v11000_params_st {
 
 typedef struct cudaGraphKernelNodeGetAttribute_v11000_params_st {
     cudaGraphNode_t hNode;
-    enum cudaKernelNodeAttrID attr;
-    union cudaKernelNodeAttrValue *value_out;
+    cudaKernelNodeAttrID attr;
+    cudaKernelNodeAttrValue *value_out;
 } cudaGraphKernelNodeGetAttribute_v11000_params;
 
 typedef struct cudaGraphKernelNodeSetAttribute_v11000_params_st {
     cudaGraphNode_t hNode;
-    enum cudaKernelNodeAttrID attr;
-    const union cudaKernelNodeAttrValue *value;
+    cudaKernelNodeAttrID attr;
+    const cudaKernelNodeAttrValue *value;
 } cudaGraphKernelNodeSetAttribute_v11000_params;
 
 typedef struct cudaGraphAddMemcpyNode_v10000_params_st {
@@ -1479,19 +1447,28 @@ typedef struct cudaGraphDestroyNode_v10000_params_st {
     cudaGraphNode_t node;
 } cudaGraphDestroyNode_v10000_params;
 
-typedef struct cudaGraphInstantiate_v10000_params_st {
+typedef struct cudaGraphInstantiate_v12000_params_st {
     cudaGraphExec_t *pGraphExec;
     cudaGraph_t graph;
-    cudaGraphNode_t *pErrorNode;
-    char *pLogBuffer;
-    size_t bufferSize;
-} cudaGraphInstantiate_v10000_params;
+    unsigned long long flags;
+} cudaGraphInstantiate_v12000_params;
 
 typedef struct cudaGraphInstantiateWithFlags_v11040_params_st {
     cudaGraphExec_t *pGraphExec;
     cudaGraph_t graph;
     unsigned long long flags;
 } cudaGraphInstantiateWithFlags_v11040_params;
+
+typedef struct cudaGraphInstantiateWithParams_ptsz_v12000_params_st {
+    cudaGraphExec_t *pGraphExec;
+    cudaGraph_t graph;
+    cudaGraphInstantiateParams *instantiateParams;
+} cudaGraphInstantiateWithParams_ptsz_v12000_params;
+
+typedef struct cudaGraphExecGetFlags_v12000_params_st {
+    cudaGraphExec_t graphExec;
+    unsigned long long *flags;
+} cudaGraphExecGetFlags_v12000_params;
 
 typedef struct cudaGraphExecKernelNodeSetParams_v10010_params_st {
     cudaGraphExec_t hGraphExec;
@@ -1591,8 +1568,7 @@ typedef struct cudaGraphNodeGetEnabled_v11060_params_st {
 typedef struct cudaGraphExecUpdate_v10020_params_st {
     cudaGraphExec_t hGraphExec;
     cudaGraph_t hGraph;
-    cudaGraphNode_t *hErrorNode_out;
-    enum cudaGraphExecUpdateResult *updateResult_out;
+    cudaGraphExecUpdateResultInfo *resultInfo;
 } cudaGraphExecUpdate_v10020_params;
 
 typedef struct cudaGraphUpload_ptsz_v10000_params_st {
@@ -1654,12 +1630,18 @@ typedef struct cudaGetDriverEntryPoint_ptsz_v11030_params_st {
     const char *symbol;
     void **funcPtr;
     unsigned long long flags;
+    enum cudaDriverEntryPointQueryResult *driverStatus;
 } cudaGetDriverEntryPoint_ptsz_v11030_params;
 
 typedef struct cudaGetFuncBySymbol_v11000_params_st {
     cudaFunction_t *functionPtr;
     const void *symbolPtr;
 } cudaGetFuncBySymbol_v11000_params;
+
+typedef struct cudaGetKernel_v12000_params_st {
+    cudaKernel_t *kernelPtr;
+    const void *entryFuncAddr;
+} cudaGetKernel_v12000_params;
 
 typedef struct cudaMemcpy_v3020_params_st {
     void *dst;
@@ -1908,6 +1890,11 @@ typedef struct cudaStreamGetFlags_v5050_params_st {
     unsigned int *flags;
 } cudaStreamGetFlags_v5050_params;
 
+typedef struct cudaStreamGetId_v12000_params_st {
+    cudaStream_t hStream;
+    unsigned long long *streamId;
+} cudaStreamGetId_v12000_params;
+
 typedef struct cudaStreamGetPriority_v5050_params_st {
     cudaStream_t hStream;
     int *priority;
@@ -1956,6 +1943,12 @@ typedef struct cudaLaunchKernel_v7000_params_st {
     size_t sharedMem;
     cudaStream_t stream;
 } cudaLaunchKernel_v7000_params;
+
+typedef struct cudaLaunchKernelExC_v11060_params_st {
+    const cudaLaunchConfig_t *config;
+    const void *func;
+    void **args;
+} cudaLaunchKernelExC_v11060_params;
 
 typedef struct cudaLaunchCooperativeKernel_v9000_params_st {
     const void *func;
@@ -2021,6 +2014,12 @@ typedef struct cudaWaitExternalSemaphoresAsync_v2_v11020_params_st {
     cudaStream_t stream;
 } cudaWaitExternalSemaphoresAsync_v2_v11020_params;
 
+typedef struct cudaGraphInstantiateWithParams_v12000_params_st {
+    cudaGraphExec_t *pGraphExec;
+    cudaGraph_t graph;
+    cudaGraphInstantiateParams *instantiateParams;
+} cudaGraphInstantiateWithParams_v12000_params;
+
 typedef struct cudaGraphUpload_v10000_params_st {
     cudaGraphExec_t graphExec;
     cudaStream_t stream;
@@ -2052,6 +2051,12 @@ typedef struct cudaStreamGetCaptureInfo_v10010_params_st {
     unsigned long long *id_out;
 } cudaStreamGetCaptureInfo_v10010_params;
 
+typedef struct cudaStreamGetCaptureInfo_ptsz_v10010_params_st {
+    cudaStream_t stream;
+    enum cudaStreamCaptureStatus *captureStatus_out;
+    unsigned long long *id_out;
+} cudaStreamGetCaptureInfo_ptsz_v10010_params;
+
 typedef struct cudaStreamGetCaptureInfo_v2_v11030_params_st {
     cudaStream_t stream;
     enum cudaStreamCaptureStatus *captureStatus_out;
@@ -2075,14 +2080,14 @@ typedef struct cudaStreamCopyAttributes_v11000_params_st {
 
 typedef struct cudaStreamGetAttribute_v11000_params_st {
     cudaStream_t stream;
-    enum cudaStreamAttrID attr;
-    union cudaStreamAttrValue *value;
+    cudaStreamAttrID attr;
+    cudaStreamAttrValue *value;
 } cudaStreamGetAttribute_v11000_params;
 
 typedef struct cudaStreamSetAttribute_v11000_params_st {
     cudaStream_t stream;
-    enum cudaStreamAttrID attr;
-    const union cudaStreamAttrValue *param;
+    cudaStreamAttrID attr;
+    const cudaStreamAttrValue *param;
 } cudaStreamSetAttribute_v11000_params;
 
 typedef struct cudaMallocAsync_v11020_params_st {
@@ -2107,7 +2112,13 @@ typedef struct cudaGetDriverEntryPoint_v11030_params_st {
     const char *symbol;
     void **funcPtr;
     unsigned long long flags;
+    enum cudaDriverEntryPointQueryResult *driverStatus;
 } cudaGetDriverEntryPoint_v11030_params;
+
+typedef struct cudaGetDeviceProperties_v3020_params_st {
+    struct cudaDeviceProp *prop;
+    int device;
+} cudaGetDeviceProperties_v3020_params;
 
 // Parameter trace structures for removed functions
 

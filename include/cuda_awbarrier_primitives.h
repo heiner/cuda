@@ -48,68 +48,62 @@
  */
 
 #ifndef _CUDA_AWBARRIER_PRIMITIVES_H_
-# define _CUDA_AWBARRIER_PRIMITIVES_H_
+#define _CUDA_AWBARRIER_PRIMITIVES_H_
 
-# include "cuda_awbarrier_helpers.h"
+#include "cuda_awbarrier_helpers.h"
 
-# if !defined(_CUDA_AWBARRIER_ARCH_700_OR_LATER)
-#  error This file requires compute capability 7.0 or greater.
-# endif
-
-typedef uint64_t __mbarrier_t;
-typedef uint64_t __mbarrier_token_t;
+#if !defined(_CUDA_AWBARRIER_SM_TARGET)
+# error This file requires compute capability 7.0 or greater.
+#endif
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER __host__
-uint32_t __mbarrier_maximum_count()
-{
+uint32_t __mbarrier_maximum_count() {
     return _CUDA_AWBARRIER_MAX_COUNT;
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-void __mbarrier_init(__mbarrier_t* barrier, uint32_t expected_count)
-{
-    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-    _CUDA_AWBARRIER_ASSERT(expected_count > 0 && expected_count <= _CUDA_AWBARRIER_MAX_COUNT);
-
+void __mbarrier_init(__mbarrier_t* barrier, uint32_t expected_count) {
     _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_init(barrier, expected_count);
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-void __mbarrier_inval(__mbarrier_t* barrier)
-{
-    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
+void __mbarrier_inval(__mbarrier_t* barrier) {
     _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_inval(barrier);
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-__mbarrier_token_t __mbarrier_arrive(__mbarrier_t* barrier)
-{
-    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
+__mbarrier_token_t __mbarrier_arrive(__mbarrier_t* barrier) {
     return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<false>(barrier);
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-__mbarrier_token_t __mbarrier_arrive_and_drop(__mbarrier_t* barrier)
-{
-    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
+__mbarrier_token_t __mbarrier_arrive_and_drop(__mbarrier_t* barrier) {
     return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_arrive_drop<true>(barrier);
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-bool __mbarrier_test_wait(__mbarrier_t* barrier, __mbarrier_token_t token)
-{
-    _CUDA_AWBARRIER_ASSERT(__isShared(barrier));
-
+bool __mbarrier_test_wait(__mbarrier_t* barrier, __mbarrier_token_t token) {
     return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_test_wait(barrier, token);
 }
 
 _CUDA_AWBARRIER_STATIC_QUALIFIER
-uint32_t __mbarrier_token_pending_count(__mbarrier_token_t token)
-{
+uint32_t __mbarrier_token_pending_count(__mbarrier_token_t token) {
     return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_token_pending_count(token);
+}
+
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool __mbarrier_test_wait_parity(__mbarrier_t* barrier, bool phase_parity) {
+   return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_test_wait_parity(barrier, phase_parity);
+}
+
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool __mbarrier_try_wait(__mbarrier_t* barrier, __mbarrier_token_t token, uint32_t max_sleep_nanosec) {
+   return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_try_wait(barrier, token, max_sleep_nanosec);
+}
+
+_CUDA_AWBARRIER_STATIC_QUALIFIER
+bool __mbarrier_try_wait_parity(__mbarrier_t* barrier, bool phase_parity, uint32_t max_sleep_nanosec) {
+   return _CUDA_AWBARRIER_INTERNAL_NAMESPACE::awbarrier_try_wait_parity(barrier, phase_parity, max_sleep_nanosec);
 }
 
 #endif /* !_CUDA_AWBARRIER_PRIMITIVES_H_ */

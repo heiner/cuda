@@ -93,6 +93,9 @@ extern __host__ cudaError_t CUDARTAPI cudaVDPAUGetDevice(int *device, VdpDevice 
  * with the CUDA device \p device and sets \p device as the current 
  * device for the calling host thread.
  *
+ * This function will immediately initialize the primary context on 
+ * \p device if needed.
+ *
  * If \p device has already been initialized then this call will fail 
  * with the error ::cudaErrorSetOnActiveProcess.  In this case it is 
  * necessary to reset \p device using ::cudaDeviceReset() before 

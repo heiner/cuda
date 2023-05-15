@@ -15,9 +15,9 @@
  */
 
 
-/*! \file device_allocator.h
+/*! \file
  *  \brief An allocator which creates new elements in memory accessible by
- *         devices.
+ *  devices.
  */
 
 #pragma once
@@ -32,8 +32,8 @@
 
 THRUST_NAMESPACE_BEGIN
 
-/** \addtogroup memory_resources Memory Resources
- *  \ingroup memory_management_classes
+/** \addtogroup allocators Allocators
+ *  \ingroup memory_management
  *  \{
  */
 
@@ -115,28 +115,26 @@ public:
     };
 
     /*! Default constructor has no effect. */
-    __host__
+    __host__ __device__
     device_allocator() {}
 
     /*! Copy constructor has no effect. */
-    __host__
+    __host__ __device__
     device_allocator(const device_allocator& other) : base(other) {}
 
     /*! Constructor from other \p device_allocator has no effect. */
     template<typename U>
-    __host__
+    __host__ __device__
     device_allocator(const device_allocator<U>& other) : base(other) {}
 
-#if THRUST_CPP_DIALECT >= 2011
     device_allocator & operator=(const device_allocator &) = default;
-#endif
 
     /*! Destructor has no effect. */
-    __host__
+    __host__ __device__
     ~device_allocator() {}
 };
 
-/*! \}
+/*! \} // allocators
  */
 
 THRUST_NAMESPACE_END

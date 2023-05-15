@@ -1,5 +1,5 @@
 /*
- * Copyright 2020 NVIDIA Corporation.  All rights reserved.
+ * Copyright 2020-2022 NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO LICENSEE:
  *
@@ -162,7 +162,10 @@ typedef struct PACKED_ALIGNMENT
    */
   uint32_t pad;
   /**
-   * [r] Function name
+   * [r] The function name. This name string might be shared across all the records
+   * including records from activity APIs representing the same function, and so it should not be
+   * modified or freed until post processing of all the records is done. Once done, it is user’s responsibility to
+   * free the memory using free() function.
    */
   char* functionName;
   /**
@@ -241,6 +244,16 @@ typedef struct PACKED_ALIGNMENT
    * CUPTI does not provide PC records for non-user kernels.
    */
   uint64_t nonUsrKernelsTotalSamples;
+
+  /**
+   * [r] Status of the hardware buffer.
+   * CUPTI returns the error code CUPTI_ERROR_OUT_OF_MEMORY when hardware buffer is full.
+   * When hardware buffer is full, user will get pc data as 0. To mitigate this issue, one or more of the below options can be tried:
+   * 1. Increase the hardware buffer size using the attribute CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_HARDWARE_BUFFER_SIZE
+   * 2. Decrease the thread sleep span using the attribute CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_WORKER_THREAD_PERIODIC_SLEEP_SPAN
+   * 3. Decrease the sampling frequency using the attribute CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_SAMPLING_PERIOD
+   */
+  uint8_t hardwareBufferFull;
 } CUpti_PCSamplingData;
 
 /**
@@ -325,6 +338,14 @@ typedef enum
    * Refer \ref CUpti_PCSamplingData for buffer format for PARSED_DATA
    */
   CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_SAMPLING_DATA_BUFFER               = 8,
+  /**
+   * [rw] Control sleep time of the worker threads created by CUPTI for various PC sampling operations.
+   * CUPTI creates multiple worker threads to offload certain operations to these threads. This includes decoding of HW data to
+   * the CUPTI PC sampling data and correlating PC data to SASS instructions. CUPTI wakes up these threads periodically.
+   * Default - 100 milliseconds.
+   * Value is a uint32_t
+   */
+  CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_WORKER_THREAD_PERIODIC_SLEEP_SPAN  = 9,
   CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_FORCE_INT                          = 0x7fffffff,
 } CUpti_PCSamplingConfigurationAttributeType;
 
@@ -413,6 +434,14 @@ typedef struct
     {
       void *samplingDataBuffer;
     } samplingDataBufferData;
+    /**
+     * Refer \ref CUPTI_PC_SAMPLING_CONFIGURATION_ATTR_TYPE_WORKER_THREAD_PERIODIC_SLEEP_SPAN
+     */
+    struct
+    {
+      uint32_t workerThreadPeriodicSleepSpan;
+    } workerThreadPeriodicSleepSpanData;
+    
   } attributeData;
 } CUpti_PCSamplingConfigurationInfo;
 
@@ -539,6 +568,7 @@ typedef struct
  * enabling PC sampling.
  * \retval CUPTI_ERROR_INVALID_PARAMETER if any \p pParams is not valid
  * \retval CUPTI_ERROR_NOT_SUPPORTED indicates that the system/device
+ * \retval CUPTI_ERROR_OUT_OF_MEMORY indicates that the HW buffer is full
  * does not support the API
  */
 CUptiResult CUPTIAPI cuptiPCSamplingGetData(CUpti_PCSamplingGetDataParams *pParams);
@@ -601,6 +631,10 @@ typedef struct
 
 /**
  * \brief Disable PC sampling.
+ *
+ * For application which doesn't destroy the CUDA context explicitly,
+ * this API does the PC Sampling tear-down, joins threads and copies PC records in the buffer provided
+ * during the PC sampling configuration. PC records which can't be accommodated in the buffer are discarded.
  *
  * \param Refer \ref CUpti_PCSamplingDisableParams
  *

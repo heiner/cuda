@@ -97,10 +97,13 @@ extern "C" {
  * v12 : CUDA Toolkit 10.0, 10.1 and 10.2
  * v13 : CUDA Toolkit 11.0
  * v14 : CUDA Toolkit 11.1
- * v15 : CUDA Toolkit 11.2
+ * v15 : CUDA Toolkit 11.2, 11.3 and 11.4
  * v16 : CUDA Toolkit 11.5
+ * v17 : CUDA Toolkit 11.6
+ * v18 : CUDA Toolkit 11.8
+ * v19 : CUDA Toolkit 12.0
  */
-#define CUPTI_API_VERSION 16
+#define CUPTI_API_VERSION 18
 
 /**
  * \brief Get the CUPTI API version.

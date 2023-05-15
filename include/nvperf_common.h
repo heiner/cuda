@@ -2,7 +2,7 @@
 #define NVPERF_COMMON_H
 
 /*
- * Copyright 2014-2021  NVIDIA Corporation.  All rights reserved.
+ * Copyright 2014-2022  NVIDIA Corporation.  All rights reserved.
  *
  * NOTICE TO USER:
  *
@@ -117,7 +117,7 @@ extern "C" {
         NVPA_STATUS_OBJECT_MISMATCH = 23,
         /// Virtualized GPU (vGPU) is not supported.
         NVPA_STATUS_VIRTUALIZED_DEVICE_NOT_SUPPORTED = 24,
-        /// Profiling permission on a vGPU was not granted.
+        /// Profiling permission was not granted or the device was disabled.
         NVPA_STATUS_PROFILING_NOT_ALLOWED = 25,
         NVPA_STATUS__COUNT
     } NVPA_Status;
@@ -162,7 +162,7 @@ extern "C" {
 
 #ifndef NVPW_FIELD_EXISTS
 #define NVPW_FIELD_EXISTS(pParams_, name_) \
-    ((pParams_)->structSize >= (const size_t)((const uint8_t*)(&(pParams_)->name_) + sizeof(pParams_)->name_ - (const uint8_t*)(pParams_)))
+    ((pParams_)->structSize >= (size_t)((const uint8_t*)(&(pParams_)->name_) + sizeof(pParams_)->name_ - (const uint8_t*)(pParams_)))
 #endif // NVPW_FIELD_EXISTS
 
 

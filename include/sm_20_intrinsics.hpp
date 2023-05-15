@@ -98,6 +98,7 @@ extern "C" {
   __device__ unsigned __nv_isShared_impl(const void *);
   __device__ unsigned __nv_isConstant_impl(const void *);
   __device__ unsigned __nv_isLocal_impl(const void *);
+  __device__ unsigned __nv_isGridConstant_impl(const void *);
 }
 
 __SM_20_INTRINSICS_DECL__ unsigned int __isGlobal(const void *ptr)
@@ -119,6 +120,13 @@ __SM_20_INTRINSICS_DECL__ unsigned int __isLocal(const void *ptr)
 {
   return __nv_isLocal_impl(ptr); 
 }
+
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+__SM_20_INTRINSICS_DECL__ unsigned int __isGridConstant(const void *ptr)
+{
+  return __nv_isGridConstant_impl(ptr); 
+}
+#endif  /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700) */
 
 extern "C" {
   __device__ size_t __nv_cvta_generic_to_global_impl(const void *);
@@ -170,6 +178,40 @@ __SM_20_INTRINSICS_DECL__ void * __cvta_local_to_generic(size_t rawbits)
 {
   return __nv_cvta_local_to_generic_impl(rawbits);
 }
+
+#if !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700)
+#if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+#define __CVTA_PTR_64 1
+#endif
+
+__SM_20_INTRINSICS_DECL__ size_t __cvta_generic_to_grid_constant(const void *ptr)
+{
+#if __CVTA_PTR_64  
+  unsigned long long ret;
+  asm("cvta.to.param.u64 %0, %1;"  : "=l"(ret) : "l"(ptr));
+#else  /* !__CVTA_PTR_64 */
+  unsigned ret;
+  asm("cvta.to.param.u32 %0, %1;"  : "=r"(ret) : "r"(ptr));
+#endif  /* __CVTA_PTR_64 */  
+  return (size_t)ret;
+  
+}
+
+__SM_20_INTRINSICS_DECL__ void * __cvta_grid_constant_to_generic(size_t rawbits)
+{
+  void *ret;
+#if __CVTA_PTR_64  
+  unsigned long long in = rawbits;
+  asm("cvta.param.u64 %0, %1;" : "=l"(ret) : "l"(in));
+#else  /* !__CVTA_PTR_64 */
+  unsigned in = rawbits;
+  asm("cvta.param.u32 %0, %1;" : "=r"(ret) : "r"(in));
+#endif  /* __CVTA_PTR_64 */
+  return ret;
+}
+#undef __CVTA_PTR_64
+#endif  /* !defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 700) */
+
 
 #endif /* __cplusplus && __CUDACC__ */
 

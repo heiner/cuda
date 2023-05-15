@@ -1,5 +1,5 @@
 /*
-* Copyright 1993-2021 NVIDIA Corporation.  All rights reserved.
+* Copyright 1993-2022 NVIDIA Corporation.  All rights reserved.
 *
 * NOTICE TO LICENSEE:
 *
@@ -75,6 +75,18 @@
 #include <cstring>
 #endif /* defined(__cplusplus) && !defined(__CUDACC__) */
 
+// implicitly provided by NVRTC
+#if !defined(__CUDACC_RTC__)
+#include <nv/target>
+#endif  /* !defined(__CUDACC_RTC__) */
+
+#if !defined(IF_DEVICE_OR_CUDACC)
+#if defined(__CUDACC__)
+    #define IF_DEVICE_OR_CUDACC(d, c, f) NV_IF_ELSE_TARGET(NV_IS_DEVICE, d, c)
+#else
+    #define IF_DEVICE_OR_CUDACC(d, c, f) NV_IF_ELSE_TARGET(NV_IS_DEVICE, d, f)
+#endif
+#endif
 
 /* Set up function decorations */
 #if defined(__CUDACC__)
@@ -181,7 +193,7 @@ public:
     __CUDA_HOSTDEVICE__ __nv_bfloat16 &operator=(const double f) { __x = __double2bfloat16(f).__x; return *this; }
 
 /* Member functions only available to nvcc compilation so far */
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__))
+#if (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800))) || defined(_NVHPC_CUDA)
     /* Allow automatic construction from types supported natively in hardware */
     /* Note we do avoid constructor init-list because of special host/device compilation rules */
     __CUDA_HOSTDEVICE__ __nv_bfloat16(short val) { __x = __short2bfloat16_rn(val).__x;  }
@@ -212,14 +224,14 @@ public:
 
     /* Boolean conversion - note both 0 and -0 must return false */
     __CUDA_HOSTDEVICE__ operator bool() const { return (__x & 0x7FFF) != 0; }
-#endif /* defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)) */
+#endif /* (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800))) || defined(_NVHPC_CUDA) */
 #endif /* !defined(__CUDA_NO_BFLOAT16_CONVERSIONS__) */
 };
 
 /* Global-space operator functions are only available to nvcc compilation */
-#if defined(__CUDACC__)
+#if defined(__CUDACC__) || defined(_NVHPC_CUDA)
 
-#if __CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)
+#if (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)) || defined(_NVHPC_CUDA)
 #if !defined(__CUDA_NO_BFLOAT16_OPERATORS__)
 /* Some basic arithmetic operations expected of a builtin */
 __device__ __forceinline__ __nv_bfloat16 operator+(const __nv_bfloat16 &lh, const __nv_bfloat16 &rh) { return __hadd(lh, rh); }
@@ -269,7 +281,7 @@ __device__ __forceinline__ bool operator< (const __nv_bfloat16 &lh, const __nv_b
 __device__ __forceinline__ bool operator>=(const __nv_bfloat16 &lh, const __nv_bfloat16 &rh) { return __hge(lh, rh); }
 __device__ __forceinline__ bool operator<=(const __nv_bfloat16 &lh, const __nv_bfloat16 &rh) { return __hle(lh, rh); }
 #endif /* !defined(__CUDA_NO_BFLOAT16_OPERATORS__) */
-#endif /* __CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__) */
+#endif /* (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)) || defined(_NVHPC_CUDA) */
 #endif /* defined(__CUDACC__) */
 
 /* __nv_bfloat162 is visible to non-nvcc host compilers */
@@ -299,7 +311,7 @@ public:
 /* Global-space operator functions are only available to nvcc compilation */
 #if defined(__CUDACC__)
 
-#if (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)) && !defined(__CUDA_NO_BFLOAT162_OPERATORS__)
+#if ((!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)) && !defined(__CUDA_NO_BFLOAT162_OPERATORS__)) || defined(_NVHPC_CUDA)
 
 __device__ __forceinline__ __nv_bfloat162 operator+(const __nv_bfloat162 &lh, const __nv_bfloat162 &rh) { return __hadd2(lh, rh); }
 __device__ __forceinline__ __nv_bfloat162 operator-(const __nv_bfloat162 &lh, const __nv_bfloat162 &rh) { return __hsub2(lh, rh); }
@@ -347,7 +359,7 @@ __device__ __forceinline__ bool operator<(const __nv_bfloat162 &lh, const __nv_b
 __device__ __forceinline__ bool operator>=(const __nv_bfloat162 &lh, const __nv_bfloat162 &rh) { return __hbge2(lh, rh); }
 __device__ __forceinline__ bool operator<=(const __nv_bfloat162 &lh, const __nv_bfloat162 &rh) { return __hble2(lh, rh); }
 
-#endif /* __CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__) */
+#endif /* ((!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800)) && !defined(__CUDA_NO_BFLOAT162_OPERATORS__)) || defined(_NVHPC_CUDA) */
 #endif /* defined(__CUDACC__) */
 
 /* Restore warning for multiple assignment operators */
@@ -365,17 +377,37 @@ __device__ __forceinline__ bool operator<=(const __nv_bfloat162 &lh, const __nv_
 #undef __CUDA_HOSTDEVICE__
 #undef __CUDA_ALIGN__
 
+__CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __internal_float_as_uint(const float f)
+{
+    unsigned int u;
+IF_DEVICE_OR_CUDACC(
+    u = __float_as_uint(f);
+,
+    memcpy(&u, &f, sizeof(f));
+,
+    std::memcpy(&u, &f, sizeof(f));
+)
+    return u;
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ float __internal_uint_as_float(unsigned int u)
+{
+    float f;
+IF_DEVICE_OR_CUDACC(
+    f = __uint_as_float(u);
+,
+    memcpy(&f, &u, sizeof(u));
+,
+    std::memcpy(&f, &u, sizeof(u));
+)
+    return f;
+}
+
 __CUDA_HOSTDEVICE_BF16_DECL__ unsigned short __internal_float2bfloat16(const float f, unsigned int &sign, unsigned int &remainder)
 {
     unsigned int x;
 
-#if defined(__CUDA_ARCH__)
-    x = __float_as_uint(f);
-#elif defined(__CUDACC__)
-    (void)memcpy(&x, &f, sizeof(f));
-#else
-    (void)std::memcpy(&x, &f, sizeof(f));
-#endif
+    x = __internal_float_as_uint(f);
 
     if ((x & 0x7fffffffU) > 0x7f800000U) {
         sign = 0U;
@@ -389,17 +421,15 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned short __internal_float2bfloat16(const flo
 
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __double2bfloat16(const double x)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("{  cvt.rn.bf16.f64 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "d"(x));
+    return val;
+,
     float f = static_cast<float>(x);
     const double d = static_cast<double>(f);
-    unsigned int u;
+    unsigned int u = __internal_float_as_uint(f);
 
-#if defined(__CUDA_ARCH__)
-    u = __float_as_uint(f);
-#elif defined(__CUDACC__)
-    (void)memcpy(&u, &f, sizeof(f));
-#else
-    (void)std::memcpy(&u, &f, sizeof(f));
-#endif
     bool x_is_not_nan = ((u << (unsigned)1U) <= (unsigned)0xFF000000U);
 
 
@@ -413,23 +443,18 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __double2bfloat16(const double x)
         u |= 1U;
     }
 
-#if defined(__CUDA_ARCH__)
-    f = __int_as_float(static_cast<int>(u));
-#elif defined(__CUDACC__)
-    (void)memcpy(&f, &u, sizeof(f));
-#else
-    (void)std::memcpy(&f, &u, sizeof(f));
-#endif
+    f = __internal_uint_as_float(u);
 
     return __float2bfloat16(f);
+)
 }
 
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16(const float a)
 {
     __nv_bfloat16 val;
-#if __CUDA_ARCH__ >= 800
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     asm("{  cvt.rn.bf16.f32 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "f"(a));
-#else
+,
     __nv_bfloat16_raw r;
     unsigned int sign = 0U;
     unsigned int remainder = 0U;
@@ -438,15 +463,15 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16(const float a)
         r.x++;
     }
     val = r;
-#endif
+)
     return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rn(const float a)
 {
     __nv_bfloat16 val;
-#if __CUDA_ARCH__ >= 800
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     asm("{  cvt.rn.bf16.f32 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "f"(a));
-#else
+,
     __nv_bfloat16_raw r;
     unsigned int sign = 0U;
     unsigned int remainder = 0U;
@@ -455,25 +480,30 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rn(const float a)
         r.x++;
     }
     val = r;
-#endif
+)
     return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rz(const float a)
 {
     __nv_bfloat16 val;
-#if __CUDA_ARCH__ >= 800
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     asm("{  cvt.rz.bf16.f32 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "f"(a));
-#else
+,
     __nv_bfloat16_raw r;
     unsigned int sign = 0U;
     unsigned int remainder = 0U;
     r.x = __internal_float2bfloat16(a, sign, remainder);
     val = r;
-#endif
+)
     return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rd(const float a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("{  cvt.rm.bf16.f32 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "f"(a));
+    return val;
+,
     __nv_bfloat16 val;
     __nv_bfloat16_raw r;
     unsigned int sign = 0U;
@@ -484,9 +514,15 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_rd(const float a)
     }
     val = r;
     return val;
+)
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_ru(const float a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("{  cvt.rp.bf16.f32 %0, %1;}\n" : "=h"(__BFLOAT16_TO_US(val)) : "f"(a));
+    return val;
+,
     __nv_bfloat16 val;
     __nv_bfloat16_raw r;
     unsigned int sign = 0U;
@@ -497,46 +533,54 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __float2bfloat16_ru(const float a)
     }
     val = r;
     return val;
+)
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat162 __float2bfloat162_rn(const float a)
 {
     __nv_bfloat162 val;
-#if __CUDA_ARCH__ >= 800
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
     asm("{.reg .b16 low;\n"
         "  cvt.rn.bf16.f32 low, %1;\n"
         "  mov.b32 %0, {low,low};}\n" : "=r"(__BFLOAT162_TO_UI(val)) : "f"(a));
-#else
+,
     val = __nv_bfloat162(__float2bfloat16_rn(a), __float2bfloat16_rn(a));
-#endif
+)
     return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat162 __floats2bfloat162_rn(const float a, const float b)
 {
     __nv_bfloat162 val;
-#if __CUDA_ARCH__ >= 800
-    asm("{.reg .b16 low,high;\n"
-        "  cvt.rn.bf16.f32 low, %1;\n"
-        "  cvt.rn.bf16.f32 high, %2;\n"
-        "  mov.b32 %0, {low,high};}\n" : "=r"(__BFLOAT162_TO_UI(val)) : "f"(a), "f"(b));
-#else
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_80,
+    asm("{ cvt.rn.bf16x2.f32 %0, %2, %1;}\n"
+        : "=r"(__BFLOAT162_TO_UI(val)) : "f"(a), "f"(b));
+,
     val = __nv_bfloat162(__float2bfloat16_rn(a), __float2bfloat16_rn(b));
-#endif
+)
     return val;
 }
+
+#if (defined __CUDACC__)
+__CUDA_BF16_DECL__ float __internal_device_bfloat162float(const unsigned short h)
+{
+    float f;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    asm("{ cvt.f32.bf16 %0, %1;}\n" : "=f"(f) : "h"(h));
+,
+    asm("{ mov.b32 %0, {0,%1};}\n" : "=f"(f) : "h"(h));
+)
+    return f;
+}
+#endif /* (defined __CUDACC__)  */
 
 __CUDA_HOSTDEVICE_BF16_DECL__ float __internal_bfloat162float(const unsigned short h)
 {
     float f;
-#if defined(__CUDA_ARCH__)
-    asm("{ mov.b32 %0, {0,%1};}\n" : "=f"(f) : "h"(h));
-#else
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    f = __internal_device_bfloat162float(h);
+,
     unsigned int u = static_cast<unsigned int>(h) << 16;
-#if defined(__CUDACC__)
-    (void)memcpy(&f, &u, sizeof(f));
-#else
-    (void)std::memcpy(&f, &u, sizeof(f));
-#endif
-#endif
+    f = __internal_uint_as_float(u);
+)
     return f;
 }
 
@@ -554,7 +598,7 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float __high2float(const __nv_bfloat162 a)
     return __internal_bfloat162float(static_cast<__nv_bfloat162_raw>(a).y);
 }
 
-#if defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__))
+#if (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800))) || defined(_NVHPC_CUDA)
 
 /* CUDA vector-types compatible vector creation function (note returns __nv_bfloat162, not nv_bfloat162) */
 __VECTOR_FUNCTIONS_DECL__ __nv_bfloat162 make_bfloat162(const __nv_bfloat16 x, const __nv_bfloat16 y)
@@ -580,14 +624,22 @@ __CUDA_HOSTDEVICE_BF16_DECL__ float2 __bfloat1622float2(const __nv_bfloat162 a)
 }
 __CUDA_BF16_DECL__ int __bfloat162int_rn(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    int val;
+    asm("{  cvt.rni.s32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2int_rn(__bfloat162float(h));
+)
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ int __bfloat162int_rz(const __nv_bfloat16 h)
+
+__CUDA_HOSTDEVICE_BF16_DECL__ int __internal_bfloat162int_rz(const __nv_bfloat16 h)
 {
     const float f = __bfloat162float(h);
     int   i;
-    i = static_cast<int>(f);
-#if !(defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    i = __float2int_rz(f);
+,
     const int max_val = (int)0x7fffffffU;
     const int min_val = (int)0x80000000U;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -601,66 +653,138 @@ __CUDA_HOSTDEVICE_BF16_DECL__ int __bfloat162int_rz(const __nv_bfloat16 h)
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         i = min_val;
+    } else {
+        i = static_cast<int>(f);
     }
-#endif
+)
     return i;
 }
+
+__CUDA_HOSTDEVICE_BF16_DECL__ int __bfloat162int_rz(const __nv_bfloat16 h)
+{
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    int val;
+    asm("{  cvt.rzi.s32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
+    return __internal_bfloat162int_rz(h);
+)
+}
+
 __CUDA_BF16_DECL__ int __bfloat162int_rd(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    int val;
+    asm("{  cvt.rmi.s32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2int_rd(__bfloat162float(h));
+)
 }
 __CUDA_BF16_DECL__ int __bfloat162int_ru(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    int val;
+    asm("{  cvt.rpi.s32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2int_ru(__bfloat162float(h));
+)
 }
+
+__CUDA_BF16_DECL__ __nv_bfloat16 __internal_device_int2bfloat16_rn(const int i)
+{
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+        __nv_bfloat16 val;
+       asm("cvt.rn.bf16.s32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+       return val;
+,
+        const float ru = __int2float_ru(i);
+        const float rd = __int2float_rd(i);
+        float rz = __int2float_rz(i);
+        if (ru != rd) {
+            rz = __uint_as_float(__float_as_uint(rz) | 1U);
+        }
+        return __float2bfloat16_rn(rz);
+)
+}
+
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rn(const int i)
 {
-#if (defined __CUDA_ARCH__)
-    const float ru = __int2float_ru(i);
-    const float rd = __int2float_rd(i);
-    float rz = __int2float_rz(i);
-    if (ru != rd) {
-        rz = __uint_as_float(__float_as_uint(rz) | 1U);
-    }
-    return __float2bfloat16_rn(rz);
-#else
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_int2bfloat16_rn(i);
+,
     const double d = static_cast<double>(i);
     return __double2bfloat16(d);
-#endif
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rz(const int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rz.bf16.s32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_rz(__int2float_rz(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_rd(const int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rm.bf16.s32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_rd(__int2float_rd(i));
+)
 }
+
 __CUDA_BF16_DECL__ __nv_bfloat16 __int2bfloat16_ru(const int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rp.bf16.s32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_ru(__int2float_ru(i));
+)
 }
 
 __CUDA_BF16_DECL__ short int __bfloat162short_rn(const __nv_bfloat16 h)
 {
    short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rni.s16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rni.s16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
+
+__CUDA_BF16_DECL__ short int __internal_device_bfloat162short_rz(const __nv_bfloat16 h)
+{
+    short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    asm("cvt.rzi.s16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
+    asm("{ .reg.f32 f;\n"
+        "  mov.b32 f, {0,%1};\n"
+        "  cvt.rzi.s16.f32 %0,f;\n}"
+         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
+    return val;
+}
+
 __CUDA_HOSTDEVICE_BF16_DECL__ short int __bfloat162short_rz(const __nv_bfloat16 h)
 {
-   short int val;
-#if (defined __CUDA_ARCH__)
-   asm("{ .reg.f32 f;\n"
-       "  mov.b32 f, {0,%1};\n"
-       "  cvt.rzi.s16.f32 %0,f;\n}"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
-#else
+    short int val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    val = __internal_device_bfloat162short_rz(h);
+,
     const float f = __bfloat162float(h);
-    val = static_cast<short int>(f);
     const short int max_val = (short int)0x7fffU;
     const short int min_val = (short int)0x8000U;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -674,56 +798,99 @@ __CUDA_HOSTDEVICE_BF16_DECL__ short int __bfloat162short_rz(const __nv_bfloat16 
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         val = min_val;
+    } else {
+        val = static_cast<short int>(f);
     }
-#endif
+)
    return val;
 }
+
 __CUDA_BF16_DECL__ short int __bfloat162short_rd(const __nv_bfloat16 h)
 {
    short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rmi.s16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rmi.s16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ short int __bfloat162short_ru(const __nv_bfloat16 h)
 {
    short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rpi.s16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rpi.s16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rn(const short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rn.bf16.s16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     const float f = static_cast<float>(i);
     return __float2bfloat16_rn(f);
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rz(const short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rz.bf16.s16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_rz(__int2float_rz(static_cast<int>(i)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_rd(const short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rm.bf16.s16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_rd(__int2float_rd(static_cast<int>(i)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __short2bfloat16_ru(const short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rp.bf16.s16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_ru(__int2float_ru(static_cast<int>(i)));
+)
 }
 
 __CUDA_BF16_DECL__ unsigned int __bfloat162uint_rn(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int val;
+    asm("{  cvt.rni.u32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2uint_rn(__bfloat162float(h));
+)
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __bfloat162uint_rz(const __nv_bfloat16 h)
+
+__CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __internal_bfloat162uint_rz(const __nv_bfloat16 h)
 {
     const float f = __bfloat162float(h);
     unsigned int i;
-    i = static_cast<unsigned int>(f);
-#if !(defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    i = __float2uint_rz(f);
+,
     const unsigned int max_val = 0xffffffffU;
     const unsigned int min_val = 0U;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -737,21 +904,51 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __bfloat162uint_rz(const __nv_bfloat1
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         i = min_val;
+    } else {
+        i = static_cast<unsigned int>(f);
     }
-#endif
+)
     return i;
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ unsigned int __bfloat162uint_rz(const __nv_bfloat16 h)
+{
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int val;
+    asm("{  cvt.rzi.u32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
+    return __internal_bfloat162uint_rz(h);
+)
 }
 __CUDA_BF16_DECL__ unsigned int __bfloat162uint_rd(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int val;
+    asm("{  cvt.rmi.u32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2uint_rd(__bfloat162float(h));
+)
 }
 __CUDA_BF16_DECL__ unsigned int __bfloat162uint_ru(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned int val;
+    asm("{  cvt.rpi.u32.bf16 %0, %1;}\n" : "=r"(val) : "h"(__BFLOAT16_TO_CUS(h)));
+    return val;
+,
     return __float2uint_ru(__bfloat162float(h));
+)
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rn(const unsigned int i)
+
+__CUDA_BF16_DECL__ __nv_bfloat16 __internal_device_uint2bfloat16_rn(const unsigned int i)
 {
-#if (defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rn.bf16.u32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     const float ru = __uint2float_ru(i);
     const float rd = __uint2float_rd(i);
     float rz = __uint2float_rz(i);
@@ -759,44 +956,85 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rn(const unsigned in
         rz = __uint_as_float(__float_as_uint(rz) | 1U);
     }
     return __float2bfloat16_rn(rz);
-#else
+)
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rn(const unsigned int i)
+{
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_uint2bfloat16_rn(i);
+,
     const double d = static_cast<double>(i);
     return __double2bfloat16(d);
-#endif
+)
 }
+
 __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rz(const unsigned int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rz.bf16.u32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_rz(__uint2float_rz(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_rd(const unsigned int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rm.bf16.u32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_rd(__uint2float_rd(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __uint2bfloat16_ru(const unsigned int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+     __nv_bfloat16 val;
+    asm("cvt.rp.bf16.u32 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "r"(i));
+    return val;
+,
     return __float2bfloat16_ru(__uint2float_ru(i));
+)
 }
 
 __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_rn(const __nv_bfloat16 h)
 {
    unsigned short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rni.u16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rni.u16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ unsigned short int __bfloat162ushort_rz(const __nv_bfloat16 h)
+
+__CUDA_BF16_DECL__ unsigned short int __internal_device_bfloat162ushort_rz(const __nv_bfloat16 h)
 {
    unsigned short int val;
-#if (defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rzi.u16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rzi.u16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
-#else
+)
+   return val;
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ unsigned short int __bfloat162ushort_rz(const __nv_bfloat16 h)
+{
+   unsigned short int val;
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+   val = __internal_device_bfloat162ushort_rz(h);
+,
     const float f = __bfloat162float(h);
-    val = static_cast<unsigned short int>(f);
     const unsigned short int max_val = 0xffffU;
     const unsigned short int min_val = 0U;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -810,56 +1048,110 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned short int __bfloat162ushort_rz(const __nv
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         val = min_val;
+    } else {
+        val = static_cast<unsigned short int>(f);
     }
-#endif
+)
    return val;
 }
 __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_rd(const __nv_bfloat16 h)
 {
    unsigned short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rmi.u16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rmi.u16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ unsigned short int __bfloat162ushort_ru(const __nv_bfloat16 h)
 {
    unsigned short int val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm("cvt.rpi.u16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+,
    asm("{ .reg.f32 f;\n"
        "  mov.b32 f, {0,%1};\n"
        "  cvt.rpi.u16.f32 %0,f;\n}"
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(h)));
+)
    return val;
 }
 __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rn(const unsigned short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rn.bf16.u16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     const float f = static_cast<float>(i);
     return __float2bfloat16_rn(f);
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rz(const unsigned short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rz.bf16.u16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_rz(__uint2float_rz(static_cast<unsigned int>(i)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_rd(const unsigned short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rm.bf16.u16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_rd(__uint2float_rd(static_cast<unsigned int>(i)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ushort2bfloat16_ru(const unsigned short int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 val;
+    asm("cvt.rp.bf16.u16 %0, %1;" : "=h"(__BFLOAT16_TO_US(val)) : "h"(i));
+    return val;
+,
     return __float2bfloat16_ru(__uint2float_ru(static_cast<unsigned int>(i)));
+)
 }
 
 __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_rn(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned long long int i;
+    asm("cvt.rni.u64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ull_rn(__bfloat162float(h));
+)
 }
+
+__CUDA_BF16_DECL__ unsigned long long int __internal_device_bfloat162ull_rz(const __nv_bfloat16 h)
+{
+    unsigned long long int i;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    asm("cvt.rzi.u64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+,
+    const float f = __bfloat162float(h);
+    i = __float2ull_rz(f);
+)
+    return i;
+}
+
 __CUDA_HOSTDEVICE_BF16_DECL__ unsigned long long int __bfloat162ull_rz(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_bfloat162ull_rz(h);
+,
     const float f = __bfloat162float(h);
     unsigned long long int i;
-    i = static_cast<unsigned long long int>(f);
-#if !(defined __CUDA_ARCH__)
     const unsigned long long int max_val = 0xffffffffffffffffULL;
     const unsigned long long int min_val = 0ULL;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -873,21 +1165,41 @@ __CUDA_HOSTDEVICE_BF16_DECL__ unsigned long long int __bfloat162ull_rz(const __n
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         i = min_val;
+    } else {
+        i = static_cast<unsigned long long int>(f);
     }
-#endif
     return i;
+)
 }
+
 __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_rd(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned long long int i;
+    asm("cvt.rmi.u64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ull_rd(__bfloat162float(h));
+)
 }
 __CUDA_BF16_DECL__ unsigned long long int __bfloat162ull_ru(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    unsigned long long int i;
+    asm("cvt.rpi.u64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ull_ru(__bfloat162float(h));
+)
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rn(const unsigned long long int i)
+
+__CUDA_BF16_DECL__ __nv_bfloat16 __internal_device_ull2bfloat16_rn(const unsigned long long int i)
 {
-#if (defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rn.bf16.u64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     const float ru = __ull2float_ru(i);
     const float rd = __ull2float_rd(i);
     float rz = __ull2float_rz(i);
@@ -895,19 +1207,18 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rn(const unsigned lon
         rz = __uint_as_float(__float_as_uint(rz) | 1U);
     }
     return __float2bfloat16_rn(rz);
-#else
+)
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rn(const unsigned long long int i)
+{
+
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_ull2bfloat16_rn(i);
+,
     float f = static_cast<float>(i);
     const unsigned long long int uf = static_cast<unsigned long long int>(f);
-    unsigned int u;
-
-    #if defined(__CUDA_ARCH__)
-        u = __float_as_uint(f);
-    #elif defined(__CUDACC__)
-        (void)memcpy(&u, &f, sizeof(f));
-    #else
-        (void)std::memcpy(&u, &f, sizeof(f));
-    #endif
-
+    unsigned int u = __internal_float_as_uint(f);
     // round up happened here
     // note: no need to handle round up to f == 0x1.p64 specially
     if (uf > i) {
@@ -916,40 +1227,70 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rn(const unsigned lon
     if (uf != i) {
         u |= 1U;
     }
-
-    #if defined(__CUDA_ARCH__)
-        f = __int_as_float(static_cast<int>(u));
-    #elif defined(__CUDACC__)
-        (void)memcpy(&f, &u, sizeof(f));
-    #else
-        (void)std::memcpy(&f, &u, sizeof(f));
-    #endif
-
+    f = __internal_uint_as_float(u);
     return __float2bfloat16_rn(f);
-#endif
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rz(const unsigned long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rz.bf16.u64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_rz(__ull2float_rz(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_rd(const unsigned long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rm.bf16.u64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_rd(__ull2float_rd(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ull2bfloat16_ru(const unsigned long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rp.bf16.u64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_ru(__ull2float_ru(i));
+)
 }
 __CUDA_BF16_DECL__ long long int __bfloat162ll_rn(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    long long int i;
+    asm("cvt.rni.s64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ll_rn(__bfloat162float(h));
+)
 }
+
+__CUDA_BF16_DECL__ long long int __internal_device_bfloat162ll_rz(const __nv_bfloat16 h)
+{
+    long long int i;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    asm("cvt.rzi.s64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+,
+    const float f = __bfloat162float(h);
+    i = __float2ll_rz(f);
+)
+    return i;
+}
+
 __CUDA_HOSTDEVICE_BF16_DECL__ long long int __bfloat162ll_rz(const __nv_bfloat16 h)
 {
-    const float f = __bfloat162float(h);
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_bfloat162ll_rz(h);
+,
     long long int i;
-    i = static_cast<long long int>(f);
-#if !(defined __CUDA_ARCH__)
+    const float f = __bfloat162float(h);
     const long long int max_val = (long long int)0x7fffffffffffffffULL;
     const long long int min_val = (long long int)0x8000000000000000ULL;
     const unsigned short bits = static_cast<unsigned short>(static_cast<__nv_bfloat16_raw>(h).x << 1U);
@@ -963,21 +1304,40 @@ __CUDA_HOSTDEVICE_BF16_DECL__ long long int __bfloat162ll_rz(const __nv_bfloat16
     } else if (f < static_cast<float>(min_val)) {
         // saturate minimum
         i = min_val;
+    } else {
+        i = static_cast<long long int>(f);
     }
-#endif
     return i;
+)
 }
 __CUDA_BF16_DECL__ long long int __bfloat162ll_rd(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    long long int i;
+    asm("cvt.rmi.s64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ll_rd(__bfloat162float(h));
+)
 }
 __CUDA_BF16_DECL__ long long int __bfloat162ll_ru(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    long long int i;
+    asm("cvt.rpi.s64.bf16 %0, %1;" : "=l"(i) : "h"(__BFLOAT16_TO_CUS(h)));
+    return i;
+,
     return __float2ll_ru(__bfloat162float(h));
+)
 }
-__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rn(const long long int i)
+
+__CUDA_BF16_DECL__ __nv_bfloat16 __internal_device_ll2bfloat16_rn(const long long int i)
 {
-#if (defined __CUDA_ARCH__)
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rn.bf16.s64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     const float ru = __ll2float_ru(i);
     const float rd = __ll2float_rd(i);
     float rz = __ll2float_rz(i);
@@ -985,18 +1345,17 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rn(const long long int
         rz = __uint_as_float(__float_as_uint(rz) | 1U);
     }
     return __float2bfloat16_rn(rz);
-#else
+)
+}
+
+__CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rn(const long long int i)
+{
+NV_IF_ELSE_TARGET(NV_IS_DEVICE,
+    return __internal_device_ll2bfloat16_rn(i);
+,
     float f = static_cast<float>(i);
     const long long int lf = static_cast<long long int>(f);
-    unsigned int u;
-
-    #if defined(__CUDA_ARCH__)
-        u = __float_as_uint(f);
-    #elif defined(__CUDACC__)
-        (void)memcpy(&u, &f, sizeof(f));
-    #else
-        (void)std::memcpy(&u, &f, sizeof(f));
-    #endif
+    unsigned int u = __internal_float_as_uint(f);
 
     if ((f > 0.0f) && (lf > i)) {
         u--;
@@ -1008,63 +1367,98 @@ __CUDA_HOSTDEVICE_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rn(const long long int
         u |= 1U;
     }
 
-    #if defined(__CUDA_ARCH__)
-        f = __int_as_float(static_cast<int>(u));
-    #elif defined(__CUDACC__)
-        (void)memcpy(&f, &u, sizeof(f));
-    #else
-        (void)std::memcpy(&f, &u, sizeof(f));
-    #endif
-
+    f = __internal_uint_as_float(u);
     return __float2bfloat16_rn(f);
-#endif
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rz(const long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rz.bf16.s64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_rz(__ll2float_rz(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_rd(const long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rm.bf16.s64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_rd(__ll2float_rd(i));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __ll2bfloat16_ru(const long long int i)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 h;
+    asm("cvt.rp.bf16.s64 %0, %1;" : "=h"(__BFLOAT16_TO_US(h)) : "l"(i));
+    return h;
+,
     return __float2bfloat16_ru(__ll2float_ru(i));
+)
 }
 
 __CUDA_BF16_DECL__ __nv_bfloat16 htrunc(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm("cvt.rzi.bf16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(r)) : "h"(__BFLOAT16_TO_CUS(h)));
+    return r;
+,
     return __float2bfloat16_rz(truncf(__bfloat162float(h)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hceil(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm("cvt.rpi.bf16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(r)) : "h"(__BFLOAT16_TO_CUS(h)));
+    return r;
+,
     return __float2bfloat16_ru(ceilf(__bfloat162float(h)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hfloor(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm("cvt.rmi.bf16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(r)) : "h"(__BFLOAT16_TO_CUS(h)));
+    return r;
+,
     return __float2bfloat16_rd(floorf(__bfloat162float(h)));
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hrint(const __nv_bfloat16 h)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm("cvt.rni.bf16.bf16 %0, %1;" : "=h"(__BFLOAT16_TO_US(r)) : "h"(__BFLOAT16_TO_CUS(h)));
+    return r;
+,
     return __float2bfloat16_rn(rintf(__bfloat162float(h)));
+)
 }
 
 __CUDA_BF16_DECL__ __nv_bfloat162 h2trunc(const __nv_bfloat162 h)
 {
-    const __nv_bfloat16 low = __float2bfloat16_rz(truncf(__low2float(h)));
-    const __nv_bfloat16 high = __float2bfloat16_rz(truncf(__high2float(h)));
+    const __nv_bfloat16 low  = htrunc(h.x);
+    const __nv_bfloat16 high = htrunc(h.y);
     return __nv_bfloat162(low, high);
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 h2ceil(const __nv_bfloat162 h)
 {
-    const __nv_bfloat16 low = __float2bfloat16_ru(ceilf(__low2float(h)));
-    const __nv_bfloat16 high = __float2bfloat16_ru(ceilf(__high2float(h)));
+    const __nv_bfloat16 low  = hceil(h.x);
+    const __nv_bfloat16 high = hceil(h.y);
     return __nv_bfloat162(low, high);
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 h2floor(const __nv_bfloat162 h)
 {
-    const __nv_bfloat16 low = __float2bfloat16_rd(floorf(__low2float(h)));
-    const __nv_bfloat16 high = __float2bfloat16_rd(floorf(__high2float(h)));
+    const __nv_bfloat16 low  = hfloor(h.x);
+    const __nv_bfloat16 high = hfloor(h.y);
     return __nv_bfloat162(low, high);
 }
 
@@ -1182,7 +1576,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __ushort_as_bfloat16(const unsigned short int i
 ******************************************************************************/
 #define __SHUFFLE_SYNC_BFLOAT162_MACRO(name) /* do */ {\
    __nv_bfloat162 r; \
-   asm volatile ("{"#name" %0,%1,%2,%3,%4;\n}" \
+   asm volatile ("{" __CUDA_BF16_STRINGIFY(name) " %0,%1,%2,%3,%4;\n}" \
        :"=r"(__BFLOAT162_TO_UI(r)): "r"(__BFLOAT162_TO_CUI(var)), "r"(delta), "r"(c), "r"(mask)); \
    return r; \
 } /* while(0) */
@@ -1362,22 +1756,28 @@ __CUDA_BF16_DECL__ void __stwt(__nv_bfloat16 *const ptr, const __nv_bfloat16 val
 #undef __LDG_PTR
 #endif /*defined(__cplusplus) */
 /******************************************************************************
-*                             __nv_bfloat162 comparison                             *
+*                             __nv_bfloat162 comparison                       *
 ******************************************************************************/
-#define __COMPARISON_OP_BFLOAT162_MACRO(name) /* do */ {\
+#define __COMPARISON_OP_BFLOAT162_MACRO(name) {\
    __nv_bfloat162 val; \
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,\
+   asm( "{ " __CUDA_BF16_STRINGIFY(name) ".bf16x2.bf16x2 %0,%1,%2;\n}" \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+,\
    asm( "{.reg .b32 low_a,low_b,high_a,high_b,high_res,low_res;\n"\
         "  and.b32 high_a, %1, 0xffff0000U;\n"\
         "  and.b32 high_b, %2, 0xffff0000U;\n"\
         "  shl.b32 low_a, %1, 16;\n"\
         "  shl.b32 low_b, %2, 16;\n"\
-        "  "#name".f32.f32 low_res, low_a, low_b;\n"\
-        "  "#name".f32.f32 high_res, high_a, high_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32.f32 low_res, low_a, low_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32.f32 high_res, high_a, high_b;\n"\
         "  shr.u32 low_res, low_res, 16;\n"\
         "  or.b32  %0, high_res, low_res;}\n"\
         :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+)\
    return val; \
-} /* while(0) */
+}
+
 __CUDA_BF16_DECL__ __nv_bfloat162 __heq2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
     __COMPARISON_OP_BFLOAT162_MACRO(set.eq)
@@ -1427,19 +1827,107 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hgtu2(const __nv_bfloat162 a, const __nv_bfl
     __COMPARISON_OP_BFLOAT162_MACRO(set.gtu)
 }
 #undef __COMPARISON_OP_BFLOAT162_MACRO
-#define __BOOL_COMPARISON_OP_BFLOAT162_MACRO(name) /* do */ {\
+/******************************************************************************
+*                __nv_bfloat162 comparison with mask output                   *
+******************************************************************************/
+#define __COMPARISON_OP_BFLOAT162_MACRO_MASK(name) {\
+   unsigned val; \
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,\
+   asm( "{ " __CUDA_BF16_STRINGIFY(name) ".u32.bf16x2 %0,%1,%2;\n}" \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+,\
+   asm( "{.reg .b32 low_a,low_b,high_a,high_b;\n"\
+        " .reg .u32 high_res,low_res;\n"\
+        "  and.b32 high_a, %1, 0xffff0000U;\n"\
+        "  and.b32 high_b, %2, 0xffff0000U;\n"\
+        "  shl.b32 low_a, %1, 16;\n"\
+        "  shl.b32 low_b, %2, 16;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".u32.f32 low_res, low_a, low_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".u32.f32 high_res, high_a, high_b;\n"\
+        "  shr.u32 low_res, low_res, 16;\n"\
+        "  shl.b32 high_res, high_res, 16;\n"\
+        "  or.b32  %0, high_res, low_res;}\n"\
+        :"=r"(val) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+)\
+   return val; \
+}
+
+__CUDA_BF16_DECL__ unsigned __heq2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.eq)
+}
+__CUDA_BF16_DECL__ unsigned __hne2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.ne)
+}
+__CUDA_BF16_DECL__ unsigned __hle2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.le)
+}
+__CUDA_BF16_DECL__ unsigned __hge2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.ge)
+}
+__CUDA_BF16_DECL__ unsigned __hlt2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.lt)
+}
+__CUDA_BF16_DECL__ unsigned __hgt2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.gt)
+}
+__CUDA_BF16_DECL__ unsigned __hequ2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.equ)
+}
+__CUDA_BF16_DECL__ unsigned __hneu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.neu)
+}
+__CUDA_BF16_DECL__ unsigned __hleu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.leu)
+}
+__CUDA_BF16_DECL__ unsigned __hgeu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.geu)
+}
+__CUDA_BF16_DECL__ unsigned __hltu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.ltu)
+}
+__CUDA_BF16_DECL__ unsigned __hgtu2_mask(const __nv_bfloat162 a, const __nv_bfloat162 b)
+{
+    __COMPARISON_OP_BFLOAT162_MACRO_MASK(set.gtu)
+}
+#undef __COMPARISON_OP_BFLOAT162_MACRO_MASK
+
+#define __BOOL_COMPARISON_OP_BFLOAT162_MACRO(name) {\
    unsigned int val; \
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,\
+   bool retval; \
+   asm( "{ " __CUDA_BF16_STRINGIFY(name) ".bf16x2.bf16x2 %0,%1,%2;\n}" \
+        :"=r"(val) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+   if (val == 0x3F803F80U) {\
+      retval = true; \
+   } else { \
+      retval = false; \
+   }\
+   return retval;\
+,\
    asm( "{.reg .b32 low_a,low_b,high_a,high_b,high_res,low_res;\n"\
         "  and.b32 high_a, %1, 0xffff0000U;\n"\
         "  and.b32 high_b, %2, 0xffff0000U;\n"\
         "  shl.b32 low_a, %1, 16;\n"\
         "  shl.b32 low_b, %2, 16;\n"\
-        "  "#name".f32.f32 low_res, low_a, low_b;\n"\
-        "  "#name".f32.f32 high_res, high_a, high_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32.f32 low_res, low_a, low_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32.f32 high_res, high_a, high_b;\n"\
         "  and.b32 %0, high_res, low_res;}\n"\
         :"=r"(val) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
    return (val != 0U) ? true : false; \
-} /* while(0) */
+)\
+}
+
 __CUDA_BF16_DECL__ bool __hbeq2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
     __BOOL_COMPARISON_OP_BFLOAT162_MACRO(set.eq)
@@ -1492,15 +1980,24 @@ __CUDA_BF16_DECL__ bool __hbgtu2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 /******************************************************************************
 *                             __nv_bfloat16 comparison                              *
 ******************************************************************************/
-#define __COMPARISON_OP_BFLOAT16_MACRO(name) /* do */ {\
+#define __COMPARISON_OP_BFLOAT16_MACRO(name) {\
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,\
+   unsigned short val; \
+   asm( "{ .reg .pred __$temp3;\n" \
+        "  setp." __CUDA_BF16_STRINGIFY(name) ".bf16  __$temp3, %1, %2;\n" \
+        "  selp.u16 %0, 1, 0, __$temp3;}" \
+        : "=h"(val) : "h"(__BFLOAT16_TO_CUS(a)), "h"(__BFLOAT16_TO_CUS(b))); \
+   return (val != 0U) ? true : false; \
+,\
    unsigned int val; \
    asm( "{.reg .b32 a,b;\n"\
         "  mov.b32 a, {0, %1};\n"\
         "  mov.b32 b, {0, %2};\n"\
-        "  set."#name".f32.f32 %0, a, b;}\n"\
+        "  set." __CUDA_BF16_STRINGIFY(name) ".f32.f32 %0, a, b;}\n"\
         :"=r"(val) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
    return (val != 0U) ? true : false; \
-} /* while(0) */
+)\
+}
 __CUDA_BF16_DECL__ bool __heq(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
     __COMPARISON_OP_BFLOAT16_MACRO(eq)
@@ -1561,8 +2058,8 @@ __CUDA_BF16_DECL__ bool __hgtu(const __nv_bfloat16 a, const __nv_bfloat16 b)
         "  and.b32 high_b, %2, 0xffff0000U;\n"\
         "  shl.b32 low_a, %1, 16;\n"\
         "  shl.b32 low_b, %2, 16;\n"\
-        "  "#name".f32 low_res, low_a, low_b;\n"\
-        "  "#name".f32 high_res, high_a, high_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32 low_res, low_a, low_b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32 high_res, high_a, high_b;\n"\
         "  cvt.rn.bf16.f32 low, low_res;\n"\
         "  cvt.rn.bf16.f32 high, high_res;\n"\
         "  mov.b32 %0, {low,high};}\n"\
@@ -1573,55 +2070,85 @@ __CUDA_BF16_DECL__ bool __hgtu(const __nv_bfloat16 a, const __nv_bfloat16 b)
 __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ add.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0x3f803f80U;\n"
         "  fma.rn.bf16x2 %0,%1,c,%2;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ sub.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0xbf80bf80U;\n"
         "  fma.rn.bf16x2 %0,%2,c,%1;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ mul.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0x80008000U;\n"
         "  fma.rn.bf16x2 %0,%1,%2,c;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2_rn(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ add.rn.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0x3f803f80U;\n"
         "  fma.rn.bf16x2 %0,%1,c,%2;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2_rn(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ sub.rn.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0xbf80bf80U;\n"
         "  fma.rn.bf16x2 %0,%2,c,%1;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2_rn(const __nv_bfloat162 a, const __nv_bfloat162 b)
 {
    __nv_bfloat162 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ mul.rn.bf16x2 %0,%1,%2; }\n"
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+,
    asm( "{.reg .b32 c;\n"
         "  mov.b32 c, 0x80008000U;\n"
         "  fma.rn.bf16x2 %0,%1,%2,c;}\n"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2_sat(const __nv_bfloat162 a, const __nv_bfloat162 b)
@@ -1633,7 +2160,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hadd2_sat(const __nv_bfloat162 a, const __nv
         "  fma.rn.bf16x2 f,%1,one,%2;\n"
         "  max.bf16x2 f, f, zero;\n"
         "  min.bf16x2 %0, f, one;\n}"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2_sat(const __nv_bfloat162 a, const __nv_bfloat162 b)
@@ -1646,7 +2173,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hsub2_sat(const __nv_bfloat162 a, const __nv
         "  fma.rn.bf16x2 f,%2,mone,%1;\n"
         "  max.bf16x2 f, f, zero;\n"
         "  min.bf16x2 %0, f, one;\n}"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2_sat(const __nv_bfloat162 a, const __nv_bfloat162 b)
@@ -1659,7 +2186,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hmul2_sat(const __nv_bfloat162 a, const __nv
         "  fma.rn.bf16x2 f,%1,%2,mzero;\n"
         "  max.bf16x2 f, f, zero;\n"
         "  min.bf16x2 %0, f, one;\n}"
-        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b))); \
+        :"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)),"r"(__BFLOAT162_TO_CUI(b)));
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hfma2(const __nv_bfloat162 a, const __nv_bfloat162 b, const __nv_bfloat162 c)
@@ -1704,7 +2231,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __h2div(const __nv_bfloat162 a, const __nv_bfl
    asm( "{.reg .b32 a,b,res;\n"\
         "  mov.b32 a, {0,%1};\n"\
         "  mov.b32 b, {0,%2};\n"\
-        "  "#name".f32 res, a, b;\n"\
+        "  " __CUDA_BF16_STRINGIFY(name) ".f32 res, a, b;\n"\
         "  cvt.rn.bf16.f32 %0, res;}\n"\
         :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
    return val; \
@@ -1713,55 +2240,85 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __h2div(const __nv_bfloat162 a, const __nv_bfl
 __CUDA_BF16_DECL__ __nv_bfloat16 __hadd(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ add.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0x3f80U;\n"
         "  fma.rn.bf16 %0,%1,c,%2;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hsub(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ sub.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0xbf80U;\n"
         "  fma.rn.bf16 %0,%2,c,%1;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hmul(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ mul.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0x8000U;\n"
         "  fma.rn.bf16 %0,%1,%2,c;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hadd_rn(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ add.rn.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0x3f80U;\n"
         "  fma.rn.bf16 %0,%1,c,%2;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hsub_rn(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ sub.rn.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0xbf80U;\n"
         "  fma.rn.bf16 %0,%2,c,%1;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hmul_rn(const __nv_bfloat16 a, const __nv_bfloat16 b)
 {
    __nv_bfloat16 val;
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+   asm( "{ mul.rn.bf16 %0,%1,%2; }\n"
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+,
    asm( "{.reg .b16 c;\n"
         "  mov.b16 c, 0x8000U;\n"
         "  fma.rn.bf16 %0,%1,%2,c;}\n"
-        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b))); \
+        :"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)),"h"(__BFLOAT16_TO_CUS(b)));
+)
    return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 __hadd_sat(const __nv_bfloat16 a, const __nv_bfloat16 b)
@@ -1834,7 +2391,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hdiv(const __nv_bfloat16 a, const __nv_bfloat
                 " .reg.b16         r;        \n"\
                 "  mov.b16         r,%1;     \n"\
                 "  mov.b32         f,{0,r};  \n"\
-                "  "#fun".approx.f32   f,f;  \n"\
+                "  " __CUDA_BF16_STRINGIFY(fun) ".approx.f32   f,f;  \n"\
                 "  cvt.rn.bf16.f32    r,f;  \n"\
                 "  mov.b16         %0,r;     \n"\
                 "}": "=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)));\
@@ -1847,8 +2404,8 @@ __CUDA_BF16_DECL__ __nv_bfloat16 __hdiv(const __nv_bfloat16 a, const __nv_bfloat
                 "  mov.b32         {hl, hu}, %1;   \n"\
                 "  mov.b32         fl, {0,hl};     \n"\
                 "  mov.b32         fu, {0,hu};     \n"\
-                "  "#fun".approx.f32   fl, fl;     \n"\
-                "  "#fun".approx.f32   fu, fu;     \n"\
+                "  " __CUDA_BF16_STRINGIFY(fun) ".approx.f32   fl, fl;     \n"\
+                "  " __CUDA_BF16_STRINGIFY(fun) ".approx.f32   fu, fu;     \n"\
                 "  cvt.rn.bf16.f32    hl, fl;     \n"\
                 "  cvt.rn.bf16.f32    hu, fu;     \n"\
                 "  mov.b32         %0, {hl, hu};   \n"\
@@ -1901,7 +2458,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hexp(const __nv_bfloat16 a) {
         " .reg.b16          h,r;            \n"
         "  mov.b16          h,%1;           \n"
         "  mov.b32          f,{0,h};        \n"
-        "  mov.b32          C, 0x3fb8aa3cU;  \n"
+        "  mov.b32          C, 0x3FB8AA3CU;  \n"
         "  mul.f32          f,f,C;          \n"
         "  ex2.approx.f32   f,f;            \n"
         "  cvt.rn.bf16.f32 r,f;            \n"
@@ -1917,7 +2474,7 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp(const __nv_bfloat162 a) {
         "  mov.b32         h, %1;          \n"
         "  mov.b32         fl, {0,hl};     \n"
         "  mov.b32         fu, {0,hu};     \n"
-        "  mov.b32         C, 0x3fb8aa3cU;  \n"
+        "  mov.b32         C, 0x3FB8AA3CU;  \n"
         "  mul.f32         fl,fl,C;        \n"
         "  mul.f32         fu,fu,C;        \n"
         "  ex2.approx.f32      fl, fl;     \n"
@@ -1930,10 +2487,10 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp(const __nv_bfloat162 a) {
     return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hexp2(const __nv_bfloat16 a) {
-    __APPROX_FCAST(ex2);
+    __APPROX_FCAST(ex2)
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 h2exp2(const __nv_bfloat162 a) {
-    __APPROX_FCAST2(ex2);
+    __APPROX_FCAST2(ex2)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hexp10(const __nv_bfloat16 a) {
     __nv_bfloat16 val;
@@ -1945,7 +2502,7 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hexp10(const __nv_bfloat16 a) {
         "  mul.f32         f,f,C;          \n"
         "  ex2.approx.f32      f, f;       \n"
         "  cvt.rn.bf16.f32    r, f;       \n"
-        __BF16_SPEC_CASE(%1, r, 0xBC95U,0xbf00U)
+        __BF16_SPEC_CASE(%1, r, 0xBC95U,0xBF00U)
         "  mov.b16         %0, r;          \n"
         "}":"=h"(__BFLOAT16_TO_US(val)) : "h"(__BFLOAT16_TO_CUS(a)));
     return val;
@@ -1965,16 +2522,16 @@ __CUDA_BF16_DECL__ __nv_bfloat162 h2exp10(const __nv_bfloat162 a) {
         "  cvt.rn.bf16.f32    hl, fl;     \n"
         "  cvt.rn.bf16.f32    hu, fu;     \n"
         "  mov.b32         r, {hl, hu};    \n"
-        __BF16_SPEC_CASE2(%1, r, 0xBC95BC95U,0xbf00bf00U)
+        __BF16_SPEC_CASE2(%1, r, 0xBC95BC95U,0xBF00BF00U)
         "  mov.b32         %0, r;  \n"
         "}":"=r"(__BFLOAT162_TO_UI(val)) : "r"(__BFLOAT162_TO_CUI(a)));
     return val;
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hlog2(const __nv_bfloat16 a) {
-    __APPROX_FCAST(lg2);
+    __APPROX_FCAST(lg2)
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 h2log2(const __nv_bfloat162 a) {
-    __APPROX_FCAST2(lg2);
+    __APPROX_FCAST2(lg2)
 }
 __CUDA_BF16_DECL__ __nv_bfloat16 hlog(const __nv_bfloat16 a) {
     __nv_bfloat16 val;
@@ -2068,17 +2625,31 @@ __CUDA_BF16_DECL__ __nv_bfloat16 hsqrt(const __nv_bfloat16 a) {
 #undef __APPROX_FCAST2
 __CUDA_BF16_DECL__ __nv_bfloat162 __hisnan2(const __nv_bfloat162 a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat162 r;
+    asm("{set.nan.bf16x2.bf16x2 %0,%1,%1;\n}"
+        :"=r"(__BFLOAT162_TO_UI(r)) : "r"(__BFLOAT162_TO_CUI(a)));
+    return r;
+,
     const __nv_bfloat162 b = a;
     __BINARY_OP_BFLOAT162_MACRO(set.nan.f32)
+)
 }
 __CUDA_BF16_DECL__ bool __hisnan(const __nv_bfloat16 a)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm("{set.nan.bf16.bf16 %0,%1,%1;\n}"
+        :"=h"(__BFLOAT16_TO_US(r)) : "h"(__BFLOAT16_TO_CUS(a)));
+    return __BFLOAT16_TO_CUS(r) != 0U;
+,
     unsigned int r;
     asm( "{.reg .b32 a;\n"
          "  mov.b32 a, {0,%1};\n"
          "  set.nan.f32.f32 %0, a, a;}\n"
          :"=r"(r) : "h"(__BFLOAT16_TO_CUS(a)));
     return r != 0U;
+)
 }
 __CUDA_BF16_DECL__ __nv_bfloat162 __hneg2(const __nv_bfloat162 a)
 {
@@ -2198,32 +2769,60 @@ __CUDA_BF16_DECL__ __nv_bfloat162 __hcmadd(const __nv_bfloat162 a, const __nv_bf
     return make_bfloat162(real_tmp, img_tmp);
 }
 
+
+/* Define __PTR for atomicAdd prototypes below, undef after done */
+#if (defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)
+#define __PTR   "l"
+#else
+#define __PTR   "r"
+#endif /*(defined(_MSC_VER) && defined(_WIN64)) || defined(__LP64__) || defined(__CUDACC_RTC__)*/
+
 __CUDA_BF16_DECL__ __nv_bfloat162 atomicAdd(__nv_bfloat162 *const address, const __nv_bfloat162 val)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat162 r;
+    asm volatile ("{ atom.add.noftz.bf16x2 %0,[%1],%2; }\n"
+                  : "=r"(__BFLOAT162_TO_UI(r)) : __PTR(address), "r"(__BFLOAT162_TO_CUI(val))
+                  : "memory");
+   return r;
+,
     unsigned int* address_as_uint = (unsigned int*)address;
-    unsigned int old = *address_as_uint, assumed;
+    unsigned int old = *address_as_uint;
+    unsigned int assumed;
     do {
         assumed = old;
         __nv_bfloat162 new_val = __hadd2(val, *(__nv_bfloat162*)&assumed);
         old = atomicCAS(address_as_uint, assumed, *(unsigned int*)&new_val);
     } while (assumed != old);
     return *(__nv_bfloat162*)&old;
+)
 }
 
 __CUDA_BF16_DECL__ __nv_bfloat16 atomicAdd(__nv_bfloat16 *const address, const __nv_bfloat16 val)
 {
+NV_IF_ELSE_TARGET(NV_PROVIDES_SM_90,
+    __nv_bfloat16 r;
+    asm volatile ("{ atom.add.noftz.bf16 %0,[%1],%2; }\n"
+                  : "=h"(__BFLOAT16_TO_US(r))
+                  : __PTR(address), "h"(__BFLOAT16_TO_CUS(val))
+                  : "memory");
+   return r;
+,
     unsigned short int* address_as_us = (unsigned short int*)address;
-    unsigned short int old = *address_as_us, assumed;
+    unsigned short int old = *address_as_us;
+    unsigned short int assumed;
     do {
         assumed = old;
         old = atomicCAS(address_as_us, assumed,
             __bfloat16_as_ushort(__hadd(val, __ushort_as_bfloat16(assumed))));
     } while (assumed != old);
     return __ushort_as_bfloat16(old);
+)
 }
 
+#undef __PTR
 #undef __CUDA_BF16_DECL__
-#endif /* defined(__CUDACC__) && (__CUDA_ARCH__ >= 800 || !defined(__CUDA_ARCH__)) */
+#endif /* (defined(__CUDACC__) && (!defined(__CUDA_ARCH__) || (__CUDA_ARCH__ >= 800))) || defined(_NVHPC_CUDA) */
 #endif /* defined(__cplusplus) */
 
 #undef __BINARY_OP_BFLOAT162_MACRO
